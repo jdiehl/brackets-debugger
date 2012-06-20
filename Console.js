@@ -129,6 +129,7 @@ define(function (require, exports, module) {
 
 		Inspector.on("Console.messageAdded", _onMessageAdded);
 		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
+		Inspector.Console.enable();
 	}
 
 	// toggle the display of the console
