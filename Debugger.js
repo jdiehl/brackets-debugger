@@ -30,26 +30,51 @@ define(function (require, exports, module) {
 	var Inspector	= brackets.getModule("LiveDevelopment/Inspector/Inspector"),
 		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
+	var $exports = $(exports);
+
+	var _lastMessage;
+
+    // WebInspector Event: Console.messageAdded
+    function _onMessageAdded(res) {
+        // res = {message}
+        _lastMessage = res.message;
+		$exports.trigger("message", _lastMessage);
+    }
+
+    // WebInspector Event: Console.messageRepeatCountUpdated
+    function _onMessageRepeatCountUpdated(res) {
+        // res = {count}
+        if (_lastMessage) {
+			$exports.trigger("message", _lastMessage);
+        }
+    }
+
+    // pause the debugger
 	function pause() {
-		console.log("Pause");
+		Inspector.Debugger.pause();
 	}
 
+	// resume the debugger
 	function resume() {
-		console.log("Resume");
+		Inspector.Debugger.resume();
 	}
 
+	// step over the current line
 	function stepOver() {
 		console.log("Step Over");
 	}
 
+	// step into the function at the current line
 	function stepInto() {
 		console.log("Step Into");
 	}
 
+	// step out
 	function stepOut() {
 		console.log("Step Out");
 	}
 
+	// toggle a breakpoint
 	function toggleBreakpoint(document, line) {
 		console.log("Breakpoint in document " + document.url + ":" + line);
 		
@@ -75,11 +100,24 @@ define(function (require, exports, module) {
 		return script.scriptId;
 	}
 
+	// evaluate a console command
+	function evaluate(command, callback) {
+		Inspector.Runtime.evaluate(command, callback);
+	}
+
+	// init
+	function init() {
+		Inspector.on("Console.messageAdded", _onMessageAdded);
+		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
+	}
+
 	// public methods
+	exports.init = init;
 	exports.pause = pause;
 	exports.resume = resume;
 	exports.stepOver = stepOver;
 	exports.stepInto = stepInto;
 	exports.stepOut = stepOut;
 	exports.toggleBreakpoint = toggleBreakpoint;
+	exports.evaluate = evaluate;
 });
