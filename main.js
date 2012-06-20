@@ -41,31 +41,50 @@ define(function (require, exports, module) {
 		return { doc: doc, line: 0 };
 	}
 
+	function _addToConsole(message) {
+		var $msg = $("<div>");
+
+		// command
+		if (typeof message === "string") {
+			$msg.text(message);
+			$msg.addClass("out");
+		}
+
+		// nothing
+		else if (message.type === "undefined") {
+			return;
+		}
+
+		// text
+		else if (message.text !== undefined) {
+			$msg.text(message.text);
+			$msg.addClass("in")
+		}
+
+		// something incoming
+		else {
+			$msg.text("[" + message.type + "]");
+			$msg.addClass("in")
+		}
+
+		$consoleOut.append($msg);
+	}
+
 	/** Event Handlers *******************************************************/
-	function onPause() {
-		Debugger.pause();
-	}
-
-	function onResume() {
-		Debugger.resume();
-	}
-
-	function onStepOver() {
-		Debugger.stepOver();
-	}
-
-	function onStepInto() {
-		Debugger.stepInto();
-	}
-
-	function onStepOut() {
-		Debugger.stepOut();
-	}
-
 	function onLineNumberClick() {
 		var doc, line;
 		var enabled = Debugger.toggleBreakpoint(doc, line);
 		$(this).toggleClass("breakpoint", enabled);
+	}
+
+	function onPromptKeypress(e) {
+		if (e.charCode !== 13) return;
+		var command = $consolePrompt.val();
+		$consolePrompt.val("");
+		_addToConsole(command);
+		Debugger.evaluate(command, function (res) {
+			_addToConsole(res.result);
+		});
 	}
 
 	function onCurrentDocumentChange() {
@@ -76,6 +95,10 @@ define(function (require, exports, module) {
 			toggleConsole(true);
 			$(".CodeMirror-gutter-text").on("click", "pre", onLineNumberClick);
 		}
+	}
+
+	function onMessage(e, message) {
+		_addToConsole(message);
 	}
 
 	/** Init Functions *******************************************************/
@@ -103,11 +126,11 @@ define(function (require, exports, module) {
 
 		// configure the toolbar
 		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
-		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", onPause);
-		$btnContinue = $('<button class="resume">').appendTo($consoleToolbar).on("click", onResume);
-		$btnStep = $('<button class="stepOver">').appendTo($consoleToolbar).on("click", onStepOver);
-		$btnStep = $('<button class="stepInto">').appendTo($consoleToolbar).on("click", onStepInto);
-		$btnStep = $('<button class="stepOut">').appendTo($consoleToolbar).on("click", onStepOut);
+		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", Debugger.pause);
+		$btnContinue = $('<button class="resume">').appendTo($consoleToolbar).on("click", Debugger.resume);
+		$btnStep = $('<button class="stepOver">').appendTo($consoleToolbar).on("click", Debugger.stepOver);
+		$btnStep = $('<button class="stepInto">').appendTo($consoleToolbar).on("click", Debugger.stepInto);
+		$btnStep = $('<button class="stepOut">').appendTo($consoleToolbar).on("click", Debugger.stepOut);
 		$consoleToolbar.append('<div class="title">Console</div>');
 		$consoleToolbar.append('<a href="#" class="close">&times;</a>');
 		$console.append($consoleToolbar);
@@ -117,7 +140,7 @@ define(function (require, exports, module) {
 		$console.append($consoleContainer);
 		$consoleOut = $('<div class="output">');
 		$consoleContainer.append($consoleOut);
-		$consolePrompt = $('<input class="prompt">');
+		$consolePrompt = $('<input class="prompt">').on("keypress", onPromptKeypress);
 		$consoleContainer.append($consolePrompt);
 
 		// attach the console to the main view's content
@@ -135,9 +158,14 @@ define(function (require, exports, module) {
 		setupStyle();
 		setupConsole();
 
-		// register brackets events
+		// register for brackets events
 		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
 		$(onCurrentDocumentChange);
+
+		// register for debugger events
+		$(Debugger).on("message", onMessage);
+
+		Debugger.init();
 	}
 
 	init();
