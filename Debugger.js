@@ -63,17 +63,17 @@ define(function (require, exports, module) {
 
 	// step over the current line
 	function stepOver() {
-		// todo
+		Inspector.Debugger.stepOver();
 	}
 
 	// step into the function at the current line
 	function stepInto() {
-		// todo
+		Inspector.Debugger.stepInto();
 	}
 
 	// step out
 	function stepOut() {
-		// todo
+		Inspector.Debugger.stepOut();
 	}
 
 	// toggle a breakpoint
