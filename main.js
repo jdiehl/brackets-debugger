@@ -88,17 +88,18 @@ define(function (require, exports, module) {
 	}
 
 	function setupDocumentManager() {
-		$(DocumentManager).on("currentDocumentChange", _onCurrentDocumentChange);
+		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
 	}
 
-	function _onCurrentDocumentChange() {
+	function onCurrentDocumentChange() {
 		var document = DocumentManager.getCurrentDocument();
-		console.log(document);
 		if (! document) { return; }
-		
-		var line = 5;
-		var $lineNumber = $(".CodeMirror-gutter-text pre:nth-child(" + line + ")");
-		$lineNumber.css('background-color', 'red');
+
+		$(".CodeMirror-gutter-text").on("click", "pre", onLineNumberClick);
+	}
+
+	function onLineNumberClick() {
+		$(this).toggleClass("breakpoint");
 	}
 
 	// toggle the display of the console

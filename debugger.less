@@ -1,5 +1,19 @@
-.CodeMirror-gutter-text .breakpoint {
-	background-color: red;
+.CodeMirror-gutter-text pre {
+	position:relative;
+	padding-right: 4px;
+	&:after {
+		position: absolute;
+		top: 0; left: 0; bottom: 0; right: 0;
+		z-index: -1;
+	}
+	&.breakpoint {
+		color: #fff;
+		&:after {
+			content: "";
+			border-width: 0 14px 0px 2px;
+			-webkit-border-image: url(extensions/user/debugger/img/breakpointBorder.png) 0 14 0 2;
+		}
+	}
 }
 
 #console {
