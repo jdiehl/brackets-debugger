@@ -32,23 +32,6 @@ define(function (require, exports, module) {
 
 	var $exports = $(exports);
 
-	var _lastMessage;
-
-    // WebInspector Event: Console.messageAdded
-    function _onMessageAdded(res) {
-        // res = {message}
-        _lastMessage = res.message;
-		$exports.trigger("message", _lastMessage);
-    }
-
-    // WebInspector Event: Console.messageRepeatCountUpdated
-    function _onMessageRepeatCountUpdated(res) {
-        // res = {count}
-        if (_lastMessage) {
-			$exports.trigger("message", _lastMessage);
-        }
-    }
-
     // pause the debugger
 	function pause() {
 		Inspector.Debugger.pause();
@@ -100,15 +83,8 @@ define(function (require, exports, module) {
 		return script.scriptId;
 	}
 
-	// evaluate a console command
-	function evaluate(command, callback) {
-		Inspector.Runtime.evaluate(command, callback);
-	}
-
 	// init
 	function init() {
-		Inspector.on("Console.messageAdded", _onMessageAdded);
-		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
 	}
 
 	// public methods
@@ -119,5 +95,4 @@ define(function (require, exports, module) {
 	exports.stepInto = stepInto;
 	exports.stepOut = stepOut;
 	exports.toggleBreakpoint = toggleBreakpoint;
-	exports.evaluate = evaluate;
 });
