@@ -46,6 +46,9 @@ define(function (require, exports, module) {
 	function _openDocument(url) {
 		var doc = DocumentManager.getCurrentDocument();
 		if (doc.url === url) return doc;
+		var path = url.substr(7);
+		doc = DocumentManager.getDocumentForPath(url);
+		DocumentManager.setCurrentDocument(doc);
 		return null;
 	}
 
@@ -129,11 +132,11 @@ define(function (require, exports, module) {
 		$(onCurrentDocumentChange);
 
 		// register for debugger events
-		$(Debugger)
-			.on("setBreakpoint", onSetBreakpoint)
-			.on("removeBreakpoint", onRemoveBreakpoint)
-			.on("paused", onPaused)
-			.on("resumed", onResumed);
+		var $Debugger = $(Debugger);
+		$Debugger.on("setBreakpoint", onSetBreakpoint);
+		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
+		$Debugger.on("paused", onPaused);
+		$Debugger.on("resumed", onResumed);
 	}
 
 	init();
