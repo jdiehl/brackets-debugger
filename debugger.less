@@ -14,9 +14,20 @@
 		}
 	}
 }
-.CodeMirror {
+.CodeMirror-lines {
 	.paused {
 		background: #abbffe;
+		&:before {
+			content: "";
+			display: block;
+			position: absolute;
+			left: -28px;
+			width: 28px;
+			height: 14px;
+			background-image: url(extensions/user/debugger/img/programCounterBorder.png);
+			background-position: right center;
+			background-repeat: no-repeat;
+		}
 	} 
 }
 
