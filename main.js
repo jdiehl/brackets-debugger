@@ -22,7 +22,7 @@
  */
 
 /*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $ */
+/*global define, brackets, $, less */
 
 define(function (require, exports, module) {
 	'use strict';
@@ -31,6 +31,7 @@ define(function (require, exports, module) {
 	var EditorManager = brackets.getModule("editor/EditorManager");
 
 	var Debugger = require("Debugger");
+	var Console  = require("Console");
 
 	var extensionPath = "extensions/user/Debugger";
 
@@ -39,35 +40,6 @@ define(function (require, exports, module) {
 	function _getEditorPosition(rowElement) {
 		var doc = DocumentManager.getCurrentDocument();
 		return { doc: doc, line: 0 };
-	}
-
-	function _addToConsole(message) {
-		var $msg = $("<div>");
-
-		// command
-		if (typeof message === "string") {
-			$msg.text(message);
-			$msg.addClass("out");
-		}
-
-		// nothing
-		else if (message.type === "undefined") {
-			return;
-		}
-
-		// text
-		else if (message.text !== undefined) {
-			$msg.text(message.text);
-			$msg.addClass("in")
-		}
-
-		// something incoming
-		else {
-			$msg.text("[" + message.type + "]");
-			$msg.addClass("in")
-		}
-
-		$consoleOut.append($msg);
 	}
 
 	/** Event Handlers *******************************************************/
@@ -86,34 +58,20 @@ define(function (require, exports, module) {
 		}
 	}
 
-	function onPromptKeypress(e) {
-		if (e.charCode !== 13) return;
-		var command = $consolePrompt.val();
-		$consolePrompt.val("");
-		_addToConsole(command);
-		Debugger.evaluate(command, function (res) {
-			_addToConsole(res.result);
-		});
-	}
-
 	function onCurrentDocumentChange() {
 		var doc = DocumentManager.getCurrentDocument();
-		if (! doc) { 
-			toggleConsole(false);
+		if (! doc) {
+			Console.toggle(false);
 		} else {
-			toggleConsole(true);
+			Console.toggle(true);
 			$(".CodeMirror-gutter-text").off("click.debugger", "pre", onLineNumberClick);
 			$(".CodeMirror-gutter-text").on("click.debugger", "pre", onLineNumberClick);
 		}
 	}
 
-	function onMessage(e, message) {
-		_addToConsole(message);
-	}
-
 	/** Init Functions *******************************************************/
-	// setup the CSS style
-	function setupStyle() {
+	// load the CSS style
+	function loadStyle() {
         var request = new XMLHttpRequest();
         request.open("GET", extensionPath + "/Debugger.less", true);
         request.onload = function onLoad(event) {
@@ -127,56 +85,22 @@ define(function (require, exports, module) {
         request.send(null);
 	}
 
-	// setup the console
-	var $console, $consoleToolbar, $consoleContainer, $consoleOut, $consolePrompt;
-	var $btnPause, $btnStep, $btnContinue;
-	function setupConsole() {
-		// configure the console
-		$console = $('<div id="console" class="bottom-panel">');
-
-		// configure the toolbar
-		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
-		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", Debugger.pause);
-		$btnContinue = $('<button class="resume">').appendTo($consoleToolbar).on("click", Debugger.resume);
-		$btnStep = $('<button class="stepOver">').appendTo($consoleToolbar).on("click", Debugger.stepOver);
-		$btnStep = $('<button class="stepInto">').appendTo($consoleToolbar).on("click", Debugger.stepInto);
-		$btnStep = $('<button class="stepOut">').appendTo($consoleToolbar).on("click", Debugger.stepOut);
-		$consoleToolbar.append('<div class="title">Console</div>');
-		$consoleToolbar.append('<a href="#" class="close">&times;</a>');
-		$console.append($consoleToolbar);
-		
-		// configure the container
-		$consoleContainer = $('<div class="table-container">');
-		$console.append($consoleContainer);
-		$consoleOut = $('<div class="output">');
-		$consoleContainer.append($consoleOut);
-		$consolePrompt = $('<input class="prompt">').on("keypress", onPromptKeypress);
-		$consoleContainer.append($consolePrompt);
-
-		// attach the console to the main view's content
-		$(".main-view .content").append($console);
-	}
-
-	// toggle the display of the console
-	function toggleConsole(show) {
-		$console.toggle(show);
-		EditorManager.resizeEditor();
-	}
-
 	// init
 	function init() {
-		setupStyle();
-		setupConsole();
+
+		// load styles
+		loadStyle();
+
+		// init modules
+		Debugger.init();
+		Console.init();
 
 		// register for brackets events
 		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
 		$(onCurrentDocumentChange);
 
 		// register for debugger events
-		$(Debugger).on("message", onMessage);
 		$(Debugger).on("setBreakpoint", onSetBreakpoint);
-
-		Debugger.init();
 	}
 
 	init();
