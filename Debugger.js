@@ -28,7 +28,8 @@ define(function (require, exports, module) {
 	'use strict';
 
 	var Inspector	= brackets.getModule("LiveDevelopment/Inspector/Inspector"),
-		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent"),
+		LiveDevelopment = brackets.getModule("LiveDevelopment/LiveDevelopment");
 
 	var $exports = $(exports);
 
@@ -151,9 +152,15 @@ define(function (require, exports, module) {
 	
 	// init
 	function init() {
-		Inspector.Debugger.enable();
 		Inspector.on("Debugger.paused", _onPaused);
 		Inspector.on("Debugger.resumed", _onResumed);
+		Inspector.on("connect", function () {
+			Inspector.Debugger.enable();
+			// load the script agent if necessary
+			if (!LiveDevelopment.agents.script) {
+				ScriptAgent.load();
+			}
+		});
 	}
 
 	function unload() {
