@@ -61,8 +61,18 @@ define(function (require, exports, module) {
 
 	// toggle a breakpoint
 	function toggleBreakpoint(doc, line) {
+		var id = _findBreakpoint(doc, line);
+		if (id) {
+			_removeBreakpoint(doc, line, id);
+		} else {
+			_setBreakpoint(doc, line);
+		}
+	}
+
+
+	/** Private Functions *******************************************************/
+	function _setBreakpoint(doc, line) {
 		console.log("Setting breakpoint in doc " + doc.url + ":" + line);
-		
 		var debuggerLocation = _debuggerLocationForDocument(doc, line);
 		
 		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
@@ -70,15 +80,20 @@ define(function (require, exports, module) {
 		});
 	}
 
-	function _onSetBreakpoint(id, location) {
-		_breakpoints[id] = location;
-		
-		var url		= ScriptAgent.scriptWithId(location.scriptId).url;
-		var line	= location.lineNumber;
-		
-		$exports.triggerHandler('setBreakpoint', [id, url, line]);
+	function _removeBreakpoint(doc, line, id) {
+		id = id || _findBreakpoint(doc, line);
+		console.log("Removing breakpoint " + id);
+		Inspector.Debugger.removeBreakpoint(id, function () {
+			_onRemoveBreakpoint(doc, line);
+		});
 	}
 
+
+	/** Helper Functions *******************************************************/
+	function _findBreakpoint(doc, line) {
+		return _breakpoints[doc.url] && _breakpoints[doc.url][line];
+	}
+	
 	function _debuggerLocationForDocument(doc, line)
 	{
 		return {
@@ -94,6 +109,31 @@ define(function (require, exports, module) {
 		return script.scriptId;
 	}
 
+	/** Event Handlers *******************************************************/
+	function _onSetBreakpoint(id, location) {
+		var url		= ScriptAgent.scriptWithId(location.scriptId).url;
+		var line	= location.lineNumber;
+		
+		if (! _breakpoints[url]) { _breakpoints[url] = []; }
+		_breakpoints[url][line] = id;
+		
+		$exports.triggerHandler('setBreakpoint', [url, line]);
+	}
+
+	function _onRemoveBreakpoint(doc, line) {
+		var url = doc.url;
+		
+		delete _breakpoints[url][line];
+		if (_breakpoints[url].length === 0) {
+			delete _breakpoints[url];
+		}
+		
+		$exports.triggerHandler('removeBreakpoint', [url, line]);
+	}
+
+
+	/** Init Functions *******************************************************/
+	
 	// init
 	function init() {
 	}

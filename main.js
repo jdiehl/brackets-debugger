@@ -42,6 +42,10 @@ define(function (require, exports, module) {
 		return { doc: doc, line: 0 };
 	}
 
+	function _$gutterEntryForLine(line) {
+		return $(".CodeMirror-gutter-text pre").eq(line - 1);
+	}
+
 	/** Event Handlers *******************************************************/
 	function onLineNumberClick(event) {
 		var $this = $(this);
@@ -50,11 +54,17 @@ define(function (require, exports, module) {
 		var enabled = Debugger.toggleBreakpoint(doc, line);
 	}
 
-	function onSetBreakpoint(event, id, url, line) {
+	function onSetBreakpoint(event, url, line) {
 		var doc = DocumentManager.getCurrentDocument();
-		if (doc.url === url) {
-			var $lineNumber = $(".CodeMirror-gutter-text pre").eq(line - 1);
-			$lineNumber.data("breakpointId", id).addClass("breakpoint");
+		if (doc && doc.url === url) {
+			_$gutterEntryForLine(line).addClass("breakpoint");
+		}
+	}
+
+	function onRemoveBreakpoint(event, url, line) {
+		var doc = DocumentManager.getCurrentDocument();
+		if (doc && doc.url === url) {
+			_$gutterEntryForLine(line).removeClass("breakpoint");
 		}
 	}
 
@@ -101,6 +111,7 @@ define(function (require, exports, module) {
 
 		// register for debugger events
 		$(Debugger).on("setBreakpoint", onSetBreakpoint);
+		$(Debugger).on("removeBreakpoint", onRemoveBreakpoint);
 	}
 
 	init();
