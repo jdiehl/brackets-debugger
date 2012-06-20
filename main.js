@@ -41,33 +41,41 @@ define(function (require, exports, module) {
 		return { doc: doc, line: 0 };
 	}
 
-	function _addToConsole(message) {
+	function _addToConsole(level, message, wasThrown) {
 		var $msg = $("<div>");
+		$msg.addClass(level);
+		if (wasThrown) $msg.addClass("error");
+
+		switch (level) {
 
 		// command
-		if (typeof message === "string") {
+		case "out":
 			$msg.text(message);
-			$msg.addClass("out");
-		}
+			break;
 
-		// nothing
-		else if (message.type === "undefined") {
-			return;
-		}
+		// response
+		case "in":
+			if (message.text) {
+				$msg.text(message.text);
+			} else if (message.description) {
+				$msg.text(message.description);
+			} else {
+				if (message.type === "undefined" || message.type === "null") {
+					$msg.text(message.type);
+					$msg.addClass("null");
+				} else {
+					$msg.text("[" + message.type + "]");
+				}
+			}
+			break;
 
-		// text
-		else if (message.text !== undefined) {
+		// log message
+		default:
 			$msg.text(message.text);
-			$msg.addClass("in")
-		}
-
-		// something incoming
-		else {
-			$msg.text("[" + message.type + "]");
-			$msg.addClass("in")
 		}
 
 		$consoleOut.append($msg);
+		$consoleOut.scrollTop($msg.offset().top);
 	}
 
 	/** Event Handlers *******************************************************/
@@ -81,9 +89,9 @@ define(function (require, exports, module) {
 		if (e.charCode !== 13) return;
 		var command = $consolePrompt.val();
 		$consolePrompt.val("");
-		_addToConsole(command);
+		_addToConsole("out", command);
 		Debugger.evaluate(command, function (res) {
-			_addToConsole(res.result);
+			_addToConsole("in", res.result, res.wasThrown);
 		});
 	}
 
@@ -98,7 +106,7 @@ define(function (require, exports, module) {
 	}
 
 	function onMessage(e, message) {
-		_addToConsole(message);
+		_addToConsole(message.level, message);
 	}
 
 	/** Init Functions *******************************************************/
