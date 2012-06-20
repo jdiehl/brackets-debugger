@@ -29,6 +29,7 @@ define(function (require, exports, module) {
 
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager = brackets.getModule("editor/EditorManager");
+	var ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
 	var Debugger = require("Debugger");
 	var Console  = require("Console");
@@ -40,6 +41,12 @@ define(function (require, exports, module) {
 	function _getEditorPosition(rowElement) {
 		var doc = DocumentManager.getCurrentDocument();
 		return { doc: doc, line: 0 };
+	}
+
+	function _openDocument(url) {
+		var doc = DocumentManager.getCurrentDocument();
+		if (doc.url === url) return doc;
+		return null;
 	}
 
 	/** Event Handlers *******************************************************/
@@ -56,6 +63,18 @@ define(function (require, exports, module) {
 			var $lineNumber = $(".CodeMirror-gutter-text pre").eq(line - 1);
 			$lineNumber.data("breakpointId", id).addClass("breakpoint");
 		}
+	}
+
+	function onPaused(event, res) {
+		var frame = res.callFrames[0];
+		var location = frame.location;
+		var url = ScriptAgent.scriptWithId(location.scriptId).url;
+		var doc = _openDocument(url);
+		doc.editor.setCursorPos(location.lineNumber, location.columnNumber);
+	}
+
+	function onResumed(event) {
+
 	}
 
 	function onCurrentDocumentChange() {
@@ -100,7 +119,10 @@ define(function (require, exports, module) {
 		$(onCurrentDocumentChange);
 
 		// register for debugger events
-		$(Debugger).on("setBreakpoint", onSetBreakpoint);
+		$(Debugger)
+			.on("setBreakpoint", onSetBreakpoint)
+			.on("paused", onPaused)
+			.on("resumed", onResumed);
 	}
 
 	init();

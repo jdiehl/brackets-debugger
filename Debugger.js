@@ -33,6 +33,23 @@ define(function (require, exports, module) {
 	var $exports = $(exports);
 
 	var _breakpoints = {};
+	var _callFrames;
+
+	/** Event Handlers *******************************************************/
+
+	// WebInspector Event: Debugger.paused
+	function _onPaused(res) {
+		// res = {callFrames, reason, data}
+		$exports.trigger("paused", res);
+	}
+
+	// WebInspector Event: Debugger.resumed
+	function _onResumed(res) {
+		// res = {}
+		$exports.trigger("resumed");
+	}
+
+	/** Actions **************************************************************/
 
     // pause the debugger
 	function pause() {
@@ -96,6 +113,9 @@ define(function (require, exports, module) {
 
 	// init
 	function init() {
+		Inspector.Debugger.enable();
+		Inspector.on("Debugger.paused", _onPaused);
+		Inspector.on("Debugger.resumed", _onResumed);
 	}
 
 	// public methods
