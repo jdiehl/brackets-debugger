@@ -1,9 +1,8 @@
 .CodeMirror-gutter-text pre {
 	position:relative;
-	padding-right: 4px;
 	&:after {
 		position: absolute;
-		top: 0; left: 0; bottom: 0; right: 0;
+		top: 0; left: -4px; bottom: 0; right: -6px;
 		z-index: -1;
 	}
 	&.breakpoint {
@@ -24,13 +23,19 @@
 			background: #fff;
 		}
 		button.pause {
-			background-image: url(extensions/user/debugger/img/pause.png);
+			background-image: url(extensions/user/debugger/img/debuggerPause.png);
 		}
-		button.step {
-			background-image: url(extensions/user/debugger/img/step.png);
+		button.stepIn {
+			background-image: url(extensions/user/debugger/img/debuggerStepIn.png);
 		}
-		button.continue {
-			background-image: url(extensions/user/debugger/img/continue.png);
+		button.stepOut {
+			background-image: url(extensions/user/debugger/img/debuggerStepOut.png);
+		}
+		button.stepOver {
+			background-image: url(extensions/user/debugger/img/debuggerStepOver.png);
+		}
+		button.resume {
+			background-image: url(extensions/user/debugger/img/debuggerContinue.png);
 		}
 	}
 	.table-container {
