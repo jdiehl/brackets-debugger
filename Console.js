@@ -27,7 +27,7 @@
 define(function (require, exports, module) {
 	'use strict';
 
-	var Inspector	  = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
 	var EditorManager = brackets.getModule("editor/EditorManager");
 
 	var Debugger = require("Debugger");
