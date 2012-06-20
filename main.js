@@ -67,14 +67,30 @@ define(function (require, exports, module) {
 	function onSetBreakpoint(event, url, line) {
 		var doc = DocumentManager.getCurrentDocument();
 		if (doc && doc.url === url) {
-			_$gutterEntryForLine(line).addClass("breakpoint");
+			var editor = EditorManager.getCurrentFullEditor();
+			if (editor && editor._codeMirror) {
+				// setMaker is 0-based
+				editor._codeMirror.setMarker(line - 1, null, "breakpoint");
+			}
+			else {
+				// Fallback to buggy approach (markers are lost on resize, adding lines, etc.)
+				_$gutterEntryForLine(line).addClass("breakpoint");
+			}
 		}
 	}
 
 	function onRemoveBreakpoint(event, url, line) {
 		var doc = DocumentManager.getCurrentDocument();
 		if (doc && doc.url === url) {
-			_$gutterEntryForLine(line).removeClass("breakpoint");
+			var editor = EditorManager.getCurrentFullEditor();
+			if (editor && editor._codeMirror) {
+				// setMaker is 0-based
+				editor._codeMirror.clearMarker(line - 1);
+			}
+			else {
+				// Fallback to buggy approach (markers are lost on resize, adding lines, etc.)
+				_$gutterEntryForLine(line).addClass("breakpoint");
+			}
 		}
 	}
 
