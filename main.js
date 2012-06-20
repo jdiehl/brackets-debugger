@@ -30,24 +30,59 @@ define(function (require, exports, module) {
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager = brackets.getModule("editor/EditorManager");
 
-	var extensionPath = "extensions/user/debugger";
+	var Debugger = require("Debugger");
 
+	var extensionPath = "extensions/user/Debugger";
+
+
+	/** Helper Functions *****************************************************/
+	function _getEditorPosition(rowElement) {
+		var doc = DocumentManager.getCurrentDocument();
+		return { doc: doc, line: 0 };
+	}
+
+	/** Event Handlers *******************************************************/
 	function onPause() {
-		console.log("Pause");
+		Debugger.pause();
 	}
 
-	function onStep() {
-		console.log("Step");
+	function onResume() {
+		Debugger.resume();
 	}
 
-	function onContinue() {
-		console.log("Continue");
+	function onStepOver() {
+		Debugger.stepOver();
 	}
 
+	function onStepIn() {
+		Debugger.stepIn();
+	}
+
+	function onStepOut() {
+		Debugger.stepOut();
+	}
+
+	function onLineNumberClick() {
+		var doc, line;
+		var enabled = Debugger.toggleBreakpoint(doc, line);
+		$(this).toggleClass("breakpoint", enabled);
+	}
+
+	function onCurrentDocumentChange() {
+		var doc = DocumentManager.getCurrentDocument();
+		if (! doc) { 
+			toggleConsole(false);
+		} else {
+			toggleConsole(true);
+			$(".CodeMirror-gutter-text").on("click", "pre", onLineNumberClick);
+		}
+	}
+
+	/** Init Functions *******************************************************/
 	// setup the CSS style
 	function setupStyle() {
         var request = new XMLHttpRequest();
-        request.open("GET", extensionPath + "/debugger.less", true);
+        request.open("GET", extensionPath + "/Debugger.less", true);
         request.onload = function onLoad(event) {
             var parser = new less.Parser();
             parser.parse(request.responseText, function onParse(err, tree) {
@@ -69,8 +104,10 @@ define(function (require, exports, module) {
 		// configure the toolbar
 		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
 		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", onPause);
-		$btnStep = $('<button class="step">').appendTo($consoleToolbar).on("click", onStep);
-		$btnContinue = $('<button class="continue">').appendTo($consoleToolbar).on("click", onContinue);
+		$btnContinue = $('<button class="resume">').appendTo($consoleToolbar).on("click", onResume);
+		$btnStep = $('<button class="stepover">').appendTo($consoleToolbar).on("click", onStepOver);
+		$btnStep = $('<button class="stepin">').appendTo($consoleToolbar).on("click", onStepIn);
+		$btnStep = $('<button class="stepout">').appendTo($consoleToolbar).on("click", onStepOut);
 		$consoleToolbar.append('<div class="title">Console</div>');
 		$consoleToolbar.append('<a href="#" class="close">&times;</a>');
 		$console.append($consoleToolbar);
@@ -87,35 +124,20 @@ define(function (require, exports, module) {
 		$(".main-view .content").append($console);
 	}
 
-	function setupDocumentManager() {
-		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
-	}
-
-	function onCurrentDocumentChange() {
-		var document = DocumentManager.getCurrentDocument();
-		if (! document) { return; }
-
-		$(".CodeMirror-gutter-text").on("click", "pre", onLineNumberClick);
-	}
-
-	function onLineNumberClick() {
-		$(this).toggleClass("breakpoint");
-	}
-
 	// toggle the display of the console
-	function toggleConsole() {
-		$console.toggle();
-		EditorManager.resizeEditor());
+	function toggleConsole(show) {
+		$console.toggle(show);
+		EditorManager.resizeEditor();
 	}
 
 	// init
 	function init() {
 		setupStyle();
 		setupConsole();
-		setupDocumentManager();
 
-		// show the console (evil hack for now)
-		toggleConsole();
+		// register brackets events
+		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
+		$(onCurrentDocumentChange);
 	}
 
 	init();
