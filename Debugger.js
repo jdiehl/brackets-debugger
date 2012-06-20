@@ -63,17 +63,17 @@ define(function (require, exports, module) {
 
 	// step over the current line
 	function stepOver() {
-		console.log("Step Over");
+		// todo
 	}
 
 	// step into the function at the current line
 	function stepInto() {
-		console.log("Step Into");
+		// todo
 	}
 
 	// step out
 	function stepOut() {
-		console.log("Step Out");
+		// todo
 	}
 
 	// toggle a breakpoint
@@ -89,7 +89,6 @@ define(function (require, exports, module) {
 
 	/** Private Functions *******************************************************/
 	function _setBreakpoint(doc, line) {
-		console.log("Setting breakpoint in doc " + doc.url + ":" + line);
 		var debuggerLocation = _debuggerLocationForDocument(doc, line);
 		
 		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
@@ -99,7 +98,6 @@ define(function (require, exports, module) {
 
 	function _removeBreakpoint(doc, line, id) {
 		id = id || _findBreakpoint(doc, line);
-		console.log("Removing breakpoint " + id);
 		Inspector.Debugger.removeBreakpoint(id, function () {
 			_onRemoveBreakpoint(doc, line);
 		});
