@@ -102,7 +102,7 @@ define(function (require, exports, module) {
 	function onResumed(event) {
 		if (_pausedLine) {
 			var editor = EditorManager.getCurrentFullEditor();
-			editor._codeMirror.setLineClass(_pausedLine, null, null);
+			editor._codeMirror.setLineClass(_pausedLine);
 		}
 	}
 
