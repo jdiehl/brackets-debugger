@@ -28,6 +28,7 @@ define(function (require, exports, module) {
 	'use strict';
 
 	var DocumentManager = brackets.getModule("document/DocumentManager");
+	var EditorManager = brackets.getModule("editor/EditorManager");
 
 	var extensionPath = "extensions/user/debugger";
 
@@ -100,14 +101,20 @@ define(function (require, exports, module) {
 		$lineNumber.css('background-color', 'red');
 	}
 
-	// Init
+	// toggle the display of the console
+	function toggleConsole() {
+		$console.toggle();
+		EditorManager.resizeEditor());
+	}
+
+	// init
 	function init() {
 		setupStyle();
 		setupConsole();
 		setupDocumentManager();
 
 		// show the console (evil hack for now)
-		$console.toggle();
+		toggleConsole();
 	}
 
 	init();
