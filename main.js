@@ -129,15 +129,11 @@ define(function (require, exports, module) {
 		$(onCurrentDocumentChange);
 
 		// register for debugger events
-<<<<<<< HEAD
 		$(Debugger)
 			.on("setBreakpoint", onSetBreakpoint)
+			.on("removeBreakpoint", onRemoveBreakpoint)
 			.on("paused", onPaused)
 			.on("resumed", onResumed);
-=======
-		$(Debugger).on("setBreakpoint", onSetBreakpoint);
-		$(Debugger).on("removeBreakpoint", onRemoveBreakpoint);
->>>>>>> d47adf41ea99fa4a43a8ad61e6eb158929ab3acc
 	}
 
 	init();
