@@ -25,12 +25,45 @@
 /*global define, brackets, $ */
 
 define(function (require, exports, module) {
-    'use strict';
-    
-    // Init
-    function init() {
-        // todo
-    }
+	'use strict';
 
-    init();
+	var extensionPath = "extensions/user/debugger";
+
+	// setup the CSS style
+	function setupStyle() {
+		var $cssLink = $('<link rel="stylesheet" type="text/css" href="' + extensionPath + '/debugger.css">');
+		$cssLink.appendTo(window.document.head);
+	}
+
+	// setup the console
+	var $console, $consoleToolbar, $consoleContainer, $consoleOut, $consolePrompt;
+	function setupConsole() {
+		// configure the console
+		$console = $('<div id="console" class="bottom-panel">');
+
+		// configure the toolbar
+		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
+		$consoleToolbar.append('<div class="title">Console</div>');
+		$consoleToolbar.append('<a href="#" class="class">&times;</a>');
+		$console.append($consoleToolbar);
+		
+		// configure the container
+		$consoleContainer = $('<div class="table-container">');
+		$console.append($consoleContainer);
+		$consoleOut = $('<div class="output">');
+		$consoleContainer.append($consoleOut);
+		$consolePrompt = $('<input class="prompt">');
+		$consoleContainer.append($consolePrompt);
+
+		// attach the console to the main view's content
+		$(".main-view .content").append($console);
+	}
+	
+	// Init
+	function init() {
+		setupStyle();
+		setupConsole();
+	}
+
+	init();
 });
