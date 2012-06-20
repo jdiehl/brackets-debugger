@@ -1,0 +1,56 @@
+.CodeMirror-gutter-text pre {
+	position:relative;
+	padding-right: 4px;
+}
+.CodeMirror-gutter-text pre:after {
+	position: absolute;
+	top: 0; left: 0; bottom: 0; right: 0;
+	z-index: -1;
+}
+
+.CodeMirror-gutter-text .breakpoint {
+	color: #fff;
+ }
+
+.CodeMirror-gutter-text .breakpoint:after {
+	content: "";
+	border-width: 0 14px 0px 2px;
+	-webkit-border-image: url(images/breakpointBorder.png) 0 14 0 2;
+}
+
+#console {
+	.toolbar {
+		button {
+			width: 16px;
+			margin-right: 4px;
+			background: #fff;
+		}
+		button.pause {
+			background-image: url(extensions/user/debugger/img/pause.png);
+		}
+		button.step {
+			background-image: url(extensions/user/debugger/img/step.png);
+		}
+		button.continue {
+			background-image: url(extensions/user/debugger/img/continue.png);
+		}
+	}
+	.table-container {
+		position: relative;
+		.output {
+			position: absolute;
+			width: 100%;
+			top: 0;
+			bottom: 30px;
+		}
+		.prompt {
+			padding: 0;
+			border: 0;
+			border-top: 1px solid #b8b8b8;
+			position: absolute;
+			width: 100%;
+			height: 30px;
+			bottom: 0;
+		}
+	}
+}
