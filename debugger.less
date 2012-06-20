@@ -1,0 +1,36 @@
+#console {
+	.toolbar {
+		button {
+			width: 16px;
+			margin-right: 4px;
+			background: #fff;
+		}
+		button.pause {
+			background-image: url(extensions/user/debugger/img/pause.png);
+		}
+		button.step {
+			background-image: url(extensions/user/debugger/img/step.png);
+		}
+		button.continue {
+			background-image: url(extensions/user/debugger/img/continue.png);
+		}
+	}
+	.table-container {
+		position: relative;
+		.output {
+			position: absolute;
+			width: 100%;
+			top: 0;
+			bottom: 30px;
+		}
+		.prompt {
+			padding: 0;
+			border: 0;
+			border-top: 1px solid #b8b8b8;
+			position: absolute;
+			width: 100%;
+			height: 30px;
+			bottom: 0;
+		}
+	}
+}

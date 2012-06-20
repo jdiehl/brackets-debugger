@@ -43,8 +43,17 @@ define(function (require, exports, module) {
 
 	// setup the CSS style
 	function setupStyle() {
-		var $cssLink = $('<link rel="stylesheet" type="text/css" href="' + extensionPath + '/debugger.css">');
-		$cssLink.appendTo(window.document.head);
+        var request = new XMLHttpRequest();
+        request.open("GET", extensionPath + "/debugger.less", true);
+        request.onload = function onLoad(event) {
+            var parser = new less.Parser();
+            parser.parse(request.responseText, function onParse(err, tree) {
+                console.assert(!err, err);
+                $("<style>" + tree.toCSS() + "</style>")
+                    .appendTo(window.document.head);
+            });
+        };
+        request.send(null);
 	}
 
 	// setup the console
@@ -60,7 +69,7 @@ define(function (require, exports, module) {
 		$btnStep = $('<button class="step">').appendTo($consoleToolbar).on("click", onStep);
 		$btnContinue = $('<button class="continue">').appendTo($consoleToolbar).on("click", onContinue);
 		$consoleToolbar.append('<div class="title">Console</div>');
-		$consoleToolbar.append('<a href="#" class="class">&times;</a>');
+		$consoleToolbar.append('<a href="#" class="close">&times;</a>');
 		$console.append($consoleToolbar);
 		
 		// configure the container
