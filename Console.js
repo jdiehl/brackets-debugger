@@ -75,14 +75,47 @@ define(function (require, exports, module) {
 	}
 
 	// on prompt keypress
+	var _history = [];
+	var _curHistory;
 	function _onPromptKeypress(e) {
-		if (e.charCode !== 13) return;
-		var command = $consolePrompt.val();
-		$consolePrompt.val("");
-		_add("out", command);
-		Inspector.Runtime.evaluate(command, function (res) {
-			_add("in", res.result, res.wasThrown);
-		});
+
+		switch (e.keyCode) {
+		case 13: // return
+			_curHistory = undefined;
+			var command = $consolePrompt.val();
+			$consolePrompt.val("");
+			_add("out", command);
+			_history.push(command);
+			Inspector.Runtime.evaluate(command, function (res) {
+				_add("in", res.result, res.wasThrown);
+			});
+			break;
+
+		case 38: // up
+			if (_curHistory !== undefined || $consolePrompt.val().length === 0) {
+				_curHistory = _curHistory === undefined ? _history.length - 1 : _curHistory - 1;
+				if (_curHistory < 0) {
+					_curHistory = 0;
+				} else {
+					$consolePrompt.val(_history[_curHistory]);
+				}
+			}
+			break;
+
+		case 40: // down
+			if (_curHistory !== undefined) {
+				_curHistory++;
+				if (_curHistory > _history.length - 1) {
+					_curHistory = _history.length - 1;
+				} else {
+					$consolePrompt.val(_history[_curHistory]);
+				}
+			}
+			break;
+
+		default:
+			_curHistory = undefined;
+		}
 	}
 
     // WebInspector Event: Console.messageAdded
@@ -121,7 +154,7 @@ define(function (require, exports, module) {
 		$console.append($consoleContainer);
 		$consoleOut = $('<div class="output">');
 		$consoleContainer.append($consoleOut);
-		$consolePrompt = $('<input class="prompt">').on("keypress", _onPromptKeypress);
+		$consolePrompt = $('<input class="prompt">').on("keyup", _onPromptKeypress);
 		$consoleContainer.append($consolePrompt);
 
 		// attach the console to the main view's content
