@@ -27,12 +27,16 @@
 define(function (require, exports, module) {
 	'use strict';
 
+	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+
 	function pause() {
 		console.log("Pause");
+		Inspector.Debugger.pause();
 	}
 
 	function resume() {
 		console.log("Resume");
+		Inspector.Debugger.resume();
 	}
 
 	function stepOver() {
