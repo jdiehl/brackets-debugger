@@ -133,6 +133,15 @@ define(function (require, exports, module) {
         }
     }
 
+    function _onConnect() {
+		Inspector.Console.enable();
+		toggle(true);
+    }
+
+    function _onDisconnect() {
+    	toggle(false);
+    }
+
 	// init
 	function init() {
 		// configure the console
@@ -160,12 +169,15 @@ define(function (require, exports, module) {
 		// attach the console to the main view's content
 		$(".main-view .content").append($console);
 
+		Inspector.on("connect", _onConnect);
+		Inspector.on("disconnect", _onDisconnect);
 		Inspector.on("Console.messageAdded", _onMessageAdded);
 		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
-		Inspector.Console.enable();
 	}
 
 	function unload() {
+		Inspector.off("connect", _onConnect);
+		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Console.messageAdded", _onMessageAdded);
 		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
 		$console.remove();

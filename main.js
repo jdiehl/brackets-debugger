@@ -88,11 +88,6 @@ define(function (require, exports, module) {
 		}
 	}
 
-	function onCurrentDocumentChange() {
-		var doc = DocumentManager.getCurrentDocument();
-		Console.toggle(doc ? true : false);
-	}
-
 	/** Init Functions *******************************************************/
 	// load the CSS style
 	function loadStyle() {
@@ -118,10 +113,6 @@ define(function (require, exports, module) {
 		// init modules
 		Debugger.init();
 		Console.init();
-
-		// register for brackets events
-		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
-		$(onCurrentDocumentChange);
 
 		// register for debugger events
 		$Debugger.on("setBreakpoint", onSetBreakpoint);

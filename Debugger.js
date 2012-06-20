@@ -147,26 +147,37 @@ define(function (require, exports, module) {
 		$exports.triggerHandler('removeBreakpoint', [url, line]);
 	}
 
+	function _onConnect() {
+		Inspector.Debugger.enable();
+		// load the script agent if necessary
+		if (!LiveDevelopment.agents.script) {
+			ScriptAgent.load();
+		}
+	}
+
+	function _onDisconnect() {
+		if (!LiveDevelopment.agents.script) {
+			ScriptAgent.unload();
+		}
+	}
 
 	/** Init Functions *******************************************************/
 	
 	// init
 	function init() {
+		Inspector.on("connect", _onConnect);
+		Inspector.on("disconnect", _onDisconnect);
 		Inspector.on("Debugger.paused", _onPaused);
 		Inspector.on("Debugger.resumed", _onResumed);
-		Inspector.on("connect", function () {
-			Inspector.Debugger.enable();
-			// load the script agent if necessary
-			if (!LiveDevelopment.agents.script) {
-				ScriptAgent.load();
-			}
-		});
 	}
 
 	function unload() {
+		Inspector.off("connect", _onConnect);
+		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Debugger.paused", _onPaused);
 		Inspector.off("Debugger.resumed", _onResumed);
 		$exports.off("setBreakpoint removeBreakpoint paused resumed");
+		_onDisconnect();
 	}
 
 	// public methods
