@@ -43,25 +43,14 @@ define(function (require, exports, module) {
 		return { doc: doc, line: 0 };
 	}
 
-	function _openDocument(url) {
-		if (!url || url.length === 0) return null;
-		var doc = DocumentManager.getCurrentDocument();
-		if (doc.url !== url) {
-			var path = url.substr(7);
-			doc = DocumentManager.getDocumentForPath(url);
-			DocumentManager.setCurrentDocument(doc);
-		}
-		return EditorManager.getCurrentFullEditor();
-	}
-
 	function _$gutterEntryForLine(line) {
 		return $(".CodeMirror-gutter-text pre").eq(line - 1);
 	}
 
 	/** Event Handlers *******************************************************/
 	function onLineNumberClick(event) {
-		var $this = $(this);
-		var line = $this.index() + 1;
+		var $elem = $(event.currentTarget);
+		var line = $elem.index() + 1;
 		var doc = DocumentManager.getCurrentDocument();
 		var enabled = Debugger.toggleBreakpoint(doc, line);
 	}
@@ -101,8 +90,9 @@ define(function (require, exports, module) {
 		var frame = res.callFrames[0];
 		var location = frame.location;
 		var url = ScriptAgent.scriptWithId(location.scriptId).url;
-		var editor = _openDocument(url);
-		if (editor) {
+		var doc = DocumentManager.getCurrentDocument();
+		if (doc && doc.url === url) {
+			var editor = EditorManager.getCurrentFullEditor();
 			var line = location.lineNumber - 1;
 			editor.setCursorPos(line, location.columnNumber);
 			_pausedLine = editor._codeMirror.setLineClass(line, "paused");
