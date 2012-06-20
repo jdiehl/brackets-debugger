@@ -27,6 +27,8 @@
 define(function (require, exports, module) {
 	'use strict';
 
+	var DocumentManager = brackets.getModule("document/DocumentManager");
+
 	var extensionPath = "extensions/user/debugger";
 
 	// setup the CSS style
@@ -58,11 +60,26 @@ define(function (require, exports, module) {
 		// attach the console to the main view's content
 		$(".main-view .content").append($console);
 	}
-	
+
+	function setupDocumentManager() {
+		$(DocumentManager).on("currentDocumentChange", _onCurrentDocumentChange);
+	}
+
+	function _onCurrentDocumentChange() {
+		var document = DocumentManager.getCurrentDocument();
+		console.log(document);
+		if (! document) { return; }
+		
+		var line = 5;
+		var $lineNumber = $(".CodeMirror-gutter-text pre:nth-child(" + line + ")");
+		$lineNumber.css('background-color', 'red');
+	}
+
 	// Init
 	function init() {
 		setupStyle();
 		setupConsole();
+		setupDocumentManager();
 	}
 
 	init();
