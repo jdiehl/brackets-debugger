@@ -32,6 +32,8 @@ define(function (require, exports, module) {
 
 	var $exports = $(exports);
 
+	var _breakpoints = {};
+
 	var _lastMessage;
 
     // WebInspector Event: Console.messageAdded
@@ -75,28 +77,37 @@ define(function (require, exports, module) {
 	}
 
 	// toggle a breakpoint
-	function toggleBreakpoint(document, line) {
-		console.log("Breakpoint in document " + document.url + ":" + line);
+	function toggleBreakpoint(doc, line) {
+		console.log("Setting breakpoint in doc " + doc.url + ":" + line);
 		
-		var scriptId = _scriptIdForDocument(document);
+		var debuggerLocation = _debuggerLocationForDocument(doc, line);
 		
-		var debuggerLocation = {
-			scriptId: scriptId,
+		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
+			_onSetBreakpoint(result.breakpointId, result.actualLocation);
+		});
+	}
+
+	function _onSetBreakpoint(id, location) {
+		_breakpoints[id] = location;
+		
+		var url		= ScriptAgent.scriptWithId(location.scriptId).url;
+		var line	= location.lineNumber;
+		
+		$exports.triggerHandler('setBreakpoint', [id, url, line]);
+	}
+
+	function _debuggerLocationForDocument(doc, line)
+	{
+		return {
+			scriptId: _scriptIdForDocument(doc),
 			lineNumber: line,
 			columnNumber: 0
 		};
-
-		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
-			console.log(result.breakpointId);
-			console.log(result.actualLocation);
-		});
-		
-		return true;
 	}
 
-	function _scriptIdForDocument(document)
+	function _scriptIdForDocument(doc)
 	{
-		var script = ScriptAgent.scriptForURL(document.url);
+		var script = ScriptAgent.scriptForURL(doc.url);
 		return script.scriptId;
 	}
 

@@ -76,7 +76,14 @@ define(function (require, exports, module) {
 		var line = $this.index() + 1;
 		var doc = DocumentManager.getCurrentDocument();
 		var enabled = Debugger.toggleBreakpoint(doc, line);
-		$this.toggleClass("breakpoint", enabled);
+	}
+
+	function onSetBreakpoint(event, id, url, line) {
+		var doc = DocumentManager.getCurrentDocument();
+		if (doc.url === url) {
+			var $lineNumber = $(".CodeMirror-gutter-text pre").eq(line - 1);
+			$lineNumber.data("breakpointId", id).addClass("breakpoint");
+		}
 	}
 
 	function onPromptKeypress(e) {
@@ -167,6 +174,7 @@ define(function (require, exports, module) {
 
 		// register for debugger events
 		$(Debugger).on("message", onMessage);
+		$(Debugger).on("setBreakpoint", onSetBreakpoint);
 
 		Debugger.init();
 	}
