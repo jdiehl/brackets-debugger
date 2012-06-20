@@ -96,16 +96,24 @@ define(function (require, exports, module) {
 		}
 	}
 
+	var _pausedLine;
 	function onPaused(event, res) {
 		var frame = res.callFrames[0];
 		var location = frame.location;
 		var url = ScriptAgent.scriptWithId(location.scriptId).url;
 		var editor = _openDocument(url);
-		if (editor) editor.setCursorPos(location.lineNumber, location.columnNumber);
+		if (editor) {
+			var line = location.lineNumber - 1;
+			editor.setCursorPos(line, location.columnNumber);
+			_pausedLine = editor._codeMirror.setLineClass(line, "paused");
+		}
 	}
 
 	function onResumed(event) {
-
+		if (_pausedLine) {
+			var editor = EditorManager.getCurrentFullEditor();
+			editor._codeMirror.setLineClass(_pausedLine, null, null);
+		}
 	}
 
 	function onCurrentDocumentChange() {
