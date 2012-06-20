@@ -51,7 +51,7 @@ define(function (require, exports, module) {
 	/** Event Handlers *******************************************************/
 	function onLineNumberClick(event) {
 		var $elem = $(event.currentTarget);
-		var line = $elem.index() + 1;
+		var line = $elem.index();
 		var doc = DocumentManager.getCurrentDocument();
 		var enabled = Debugger.toggleBreakpoint(doc, line);
 	}
@@ -59,13 +59,13 @@ define(function (require, exports, module) {
 	function onSetBreakpoint(event, url, line) {
 		var editor = _editorForURL(url);
 		if (!editor) return;
-		editor._codeMirror.setMarker(line - 1, null, "breakpoint");
+		editor._codeMirror.setMarker(line, null, "breakpoint");
 	}
 
 	function onRemoveBreakpoint(event, url, line) {
 		var editor = _editorForURL(url);
 		if (!editor) return;
-		editor._codeMirror.clearMarker(line - 1, null, "breakpoint");
+		editor._codeMirror.clearMarker(line, null, "breakpoint");
 	}
 
 	var _pausedLine;
@@ -76,7 +76,7 @@ define(function (require, exports, module) {
 		var editor = _editorForURL(url);
 		if (!editor) return;
 
-		_pausedLine = location.lineNumber - 1;
+		_pausedLine = location.lineNumber;
 		editor.setCursorPos(_pausedLine, location.columnNumber);
 		editor._codeMirror.setLineClass(_pausedLine, "paused");
 	}
