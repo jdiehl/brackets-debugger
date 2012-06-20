@@ -62,10 +62,12 @@ define(function (require, exports, module) {
 		Debugger.stepOut();
 	}
 
-	function onLineNumberClick() {
-		var doc, line;
+	function onLineNumberClick(event) {
+		var $this = $(this);
+		var line = $this.index() + 1;
+		var doc = DocumentManager.getCurrentDocument();
 		var enabled = Debugger.toggleBreakpoint(doc, line);
-		$(this).toggleClass("breakpoint", enabled);
+		$this.toggleClass("breakpoint", enabled);
 	}
 
 	function onCurrentDocumentChange() {
@@ -74,7 +76,8 @@ define(function (require, exports, module) {
 			toggleConsole(false);
 		} else {
 			toggleConsole(true);
-			$(".CodeMirror-gutter-text").on("click", "pre", onLineNumberClick);
+			$(".CodeMirror-gutter-text").off("click.debugger", "pre", onLineNumberClick);
+			$(".CodeMirror-gutter-text").on("click.debugger", "pre", onLineNumberClick);
 		}
 	}
 

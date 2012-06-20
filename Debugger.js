@@ -27,6 +27,9 @@
 define(function (require, exports, module) {
 	'use strict';
 
+	var Inspector	= brackets.getModule("LiveDevelopment/Inspector/Inspector"),
+		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+
 	function pause() {
 		console.log("Pause");
 	}
@@ -48,8 +51,28 @@ define(function (require, exports, module) {
 	}
 
 	function toggleBreakpoint(document, line) {
-		console.log("Breakpoint");
+		console.log("Breakpoint in document " + document.url + ":" + line);
+		
+		var scriptId = _scriptIdForDocument(document);
+		
+		var debuggerLocation = {
+			scriptId: scriptId,
+			lineNumber: line,
+			columnNumber: 0
+		};
+
+		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
+			console.log(result.breakpointId);
+			console.log(result.actualLocation);
+		});
+		
 		return true;
+	}
+
+	function _scriptIdForDocument(document)
+	{
+		var script = ScriptAgent.scriptForURL(document.url);
+		return script.scriptId;
 	}
 
 	// public methods
