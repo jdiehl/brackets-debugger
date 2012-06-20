@@ -29,6 +29,18 @@ define(function (require, exports, module) {
 
 	var extensionPath = "extensions/user/debugger";
 
+	function onPause() {
+		console.log("Pause");
+	}
+
+	function onStep() {
+		console.log("Step");
+	}
+
+	function onContinue() {
+		console.log("Continue");
+	}
+
 	// setup the CSS style
 	function setupStyle() {
 		var $cssLink = $('<link rel="stylesheet" type="text/css" href="' + extensionPath + '/debugger.css">');
@@ -37,12 +49,16 @@ define(function (require, exports, module) {
 
 	// setup the console
 	var $console, $consoleToolbar, $consoleContainer, $consoleOut, $consolePrompt;
+	var $btnPause, $btnStep, $btnContinue;
 	function setupConsole() {
 		// configure the console
 		$console = $('<div id="console" class="bottom-panel">');
 
 		// configure the toolbar
 		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
+		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", onPause);
+		$btnStep = $('<button class="step">').appendTo($consoleToolbar).on("click", onStep);
+		$btnContinue = $('<button class="continue">').appendTo($consoleToolbar).on("click", onContinue);
 		$consoleToolbar.append('<div class="title">Console</div>');
 		$consoleToolbar.append('<a href="#" class="class">&times;</a>');
 		$console.append($consoleToolbar);
@@ -58,11 +74,14 @@ define(function (require, exports, module) {
 		// attach the console to the main view's content
 		$(".main-view .content").append($console);
 	}
-	
+
 	// Init
 	function init() {
 		setupStyle();
 		setupConsole();
+
+		// show the console (evil hack for now)
+		$console.toggle();
 	}
 
 	init();
