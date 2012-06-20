@@ -12,6 +12,12 @@ Create a link to enable the extension manager:
 
     ln -s brackets/src/extensions/disabled/debugger brackets/src/extensions/user/debugger
 
+## Usage
+
+Control the debugger from the console (will pop up once you have enabled live development).
+Set breakpoints by clicking on the gutter next to source code.
+The debugger will break on the breakpoints and you can investigate the call frame from the console.
+
 ## License
 
 Copyright (c) 2012 Adobe Systems Incorporated. All rights reserved.
