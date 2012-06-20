@@ -38,13 +38,12 @@ define(function (require, exports, module) {
 
 
 	/** Helper Functions *****************************************************/
-	function _getEditorPosition(rowElement) {
+	function _editorForURL(url) {
 		var doc = DocumentManager.getCurrentDocument();
-		return { doc: doc, line: 0 };
-	}
-
-	function _$gutterEntryForLine(line) {
-		return $(".CodeMirror-gutter-text pre").eq(line - 1);
+		if (doc && doc.url) {
+			return EditorManager.getCurrentFullEditor();
+		}
+		return null;
 	}
 
 	/** Event Handlers *******************************************************/
@@ -56,33 +55,15 @@ define(function (require, exports, module) {
 	}
 
 	function onSetBreakpoint(event, url, line) {
-		var doc = DocumentManager.getCurrentDocument();
-		if (doc && doc.url === url) {
-			var editor = EditorManager.getCurrentFullEditor();
-			if (editor && editor._codeMirror) {
-				// setMaker is 0-based
-				editor._codeMirror.setMarker(line - 1, null, "breakpoint");
-			}
-			else {
-				// Fallback to buggy approach (markers are lost on resize, adding lines, etc.)
-				_$gutterEntryForLine(line).addClass("breakpoint");
-			}
-		}
+		var editor = _editorForURL(url);
+		if (!editor) return;
+		editor._codeMirror.setMarker(line - 1, null, "breakpoint");
 	}
 
 	function onRemoveBreakpoint(event, url, line) {
-		var doc = DocumentManager.getCurrentDocument();
-		if (doc && doc.url === url) {
-			var editor = EditorManager.getCurrentFullEditor();
-			if (editor && editor._codeMirror) {
-				// setMaker is 0-based
-				editor._codeMirror.clearMarker(line - 1);
-			}
-			else {
-				// Fallback to buggy approach (markers are lost on resize, adding lines, etc.)
-				_$gutterEntryForLine(line).addClass("breakpoint");
-			}
-		}
+		var editor = _editorForURL(url);
+		if (!editor) return;
+		editor._codeMirror.clearMarker(line - 1, null, "breakpoint");
 	}
 
 	var _pausedLine;
@@ -90,13 +71,12 @@ define(function (require, exports, module) {
 		var frame = res.callFrames[0];
 		var location = frame.location;
 		var url = ScriptAgent.scriptWithId(location.scriptId).url;
-		var doc = DocumentManager.getCurrentDocument();
-		if (doc && doc.url === url) {
-			var editor = EditorManager.getCurrentFullEditor();
-			var line = location.lineNumber - 1;
-			editor.setCursorPos(line, location.columnNumber);
-			_pausedLine = editor._codeMirror.setLineClass(line, "paused");
-		}
+		var editor = _editorForURL(url);
+		if (!editor) return;
+
+		_pausedLine = location.lineNumber - 1;
+		editor.setCursorPos(_pausedLine, location.columnNumber);
+		editor._codeMirror.setLineClass(_pausedLine, "paused");
 	}
 
 	function onResumed(event) {
@@ -108,13 +88,7 @@ define(function (require, exports, module) {
 
 	function onCurrentDocumentChange() {
 		var doc = DocumentManager.getCurrentDocument();
-		if (! doc) {
-			Console.toggle(false);
-		} else {
-			Console.toggle(true);
-			$(".CodeMirror-gutter-text").off("click.debugger", "pre", onLineNumberClick);
-			$(".CodeMirror-gutter-text").on("click.debugger", "pre", onLineNumberClick);
-		}
+		Console.toggle(doc ? true : false);
 	}
 
 	/** Init Functions *******************************************************/
@@ -153,6 +127,9 @@ define(function (require, exports, module) {
 		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
 		$Debugger.on("paused", onPaused);
 		$Debugger.on("resumed", onResumed);
+
+		// register for code mirror click events
+		$("body").on("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
 	}
 
 	init();
