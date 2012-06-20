@@ -44,12 +44,14 @@ define(function (require, exports, module) {
 	}
 
 	function _openDocument(url) {
+		if (!url || url.length === 0) return null;
 		var doc = DocumentManager.getCurrentDocument();
-		if (doc.url === url) return doc;
-		var path = url.substr(7);
-		doc = DocumentManager.getDocumentForPath(url);
-		DocumentManager.setCurrentDocument(doc);
-		return null;
+		if (doc.url !== url) {
+			var path = url.substr(7);
+			doc = DocumentManager.getDocumentForPath(url);
+			DocumentManager.setCurrentDocument(doc);
+		}
+		return EditorManager.getCurrentFullEditor();
 	}
 
 	function _$gutterEntryForLine(line) {
@@ -82,8 +84,8 @@ define(function (require, exports, module) {
 		var frame = res.callFrames[0];
 		var location = frame.location;
 		var url = ScriptAgent.scriptWithId(location.scriptId).url;
-		var doc = _openDocument(url);
-		doc.editor.setCursorPos(location.lineNumber, location.columnNumber);
+		var editor = _openDocument(url);
+		if (editor) editor.setCursorPos(location.lineNumber, location.columnNumber);
 	}
 
 	function onResumed(event) {
