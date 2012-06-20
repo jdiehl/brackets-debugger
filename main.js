@@ -31,10 +31,12 @@ define(function (require, exports, module) {
 	var EditorManager = brackets.getModule("editor/EditorManager");
 	var ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
-	var Debugger = require("Debugger");
 	var Console  = require("Console");
+	var Debugger = require("Debugger");
+	var $Debugger = $(Debugger);
 
 	var extensionPath = "extensions/user/Debugger";
+	var $style;
 
 
 	/** Helper Functions *****************************************************/
@@ -100,7 +102,7 @@ define(function (require, exports, module) {
             var parser = new less.Parser();
             parser.parse(request.responseText, function onParse(err, tree) {
                 console.assert(!err, err);
-                $("<style>" + tree.toCSS() + "</style>")
+                $style = $("<style>" + tree.toCSS() + "</style>")
                     .appendTo(window.document.head);
             });
         };
@@ -122,7 +124,6 @@ define(function (require, exports, module) {
 		$(onCurrentDocumentChange);
 
 		// register for debugger events
-		var $Debugger = $(Debugger);
 		$Debugger.on("setBreakpoint", onSetBreakpoint);
 		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
 		$Debugger.on("paused", onPaused);
@@ -131,6 +132,17 @@ define(function (require, exports, module) {
 		// register for code mirror click events
 		$("body").on("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
 	}
+
+	function unload() {
+		Console.unload();
+		Debugger.unload();
+		$style.remove();
+		$(DocumentManager).off("currentDocumentChange", onCurrentDocumentChange);
+		$("body").off("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
+	}
+
+	exports.init = init;
+	exports.unload = unload;
 
 	init();
 });

@@ -156,8 +156,15 @@ define(function (require, exports, module) {
 		Inspector.on("Debugger.resumed", _onResumed);
 	}
 
+	function unload() {
+		Inspector.off("Debugger.paused", _onPaused);
+		Inspector.off("Debugger.resumed", _onResumed);
+		$exports.off("setBreakpoint removeBreakpoint paused resumed");
+	}
+
 	// public methods
 	exports.init = init;
+	exports.unload = unload;
 	exports.pause = pause;
 	exports.resume = resume;
 	exports.stepOver = stepOver;

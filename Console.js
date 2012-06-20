@@ -165,6 +165,13 @@ define(function (require, exports, module) {
 		Inspector.Console.enable();
 	}
 
+	function unload() {
+		Inspector.off("Console.messageAdded", _onMessageAdded);
+		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
+		$console.remove();
+		EditorManager.resizeEditor();
+	}
+
 	// toggle the display of the console
 	function toggle(show) {
 		$console.toggle(show);
@@ -173,5 +180,6 @@ define(function (require, exports, module) {
 
 	// public methods
 	exports.init = init;
+	exports.unload = unload;
 	exports.toggle = toggle;
 });
