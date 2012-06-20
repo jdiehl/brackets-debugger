@@ -39,8 +39,8 @@ define(function (require, exports, module) {
 		console.log("Step Over");
 	}
 
-	function stepIn() {
-		console.log("Step In");
+	function stepInto() {
+		console.log("Step Into");
 	}
 
 	function stepOut() {
@@ -56,7 +56,7 @@ define(function (require, exports, module) {
 	exports.pause = pause;
 	exports.resume = resume;
 	exports.stepOver = stepOver;
-	exports.stepIn = stepIn;
+	exports.stepInto = stepInto;
 	exports.stepOut = stepOut;
 	exports.toggleBreakpoint = toggleBreakpoint;
 });

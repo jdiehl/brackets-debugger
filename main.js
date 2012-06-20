@@ -54,8 +54,8 @@ define(function (require, exports, module) {
 		Debugger.stepOver();
 	}
 
-	function onStepIn() {
-		Debugger.stepIn();
+	function onStepInto() {
+		Debugger.stepInto();
 	}
 
 	function onStepOut() {
@@ -105,9 +105,9 @@ define(function (require, exports, module) {
 		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
 		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", onPause);
 		$btnContinue = $('<button class="resume">').appendTo($consoleToolbar).on("click", onResume);
-		$btnStep = $('<button class="stepover">').appendTo($consoleToolbar).on("click", onStepOver);
-		$btnStep = $('<button class="stepin">').appendTo($consoleToolbar).on("click", onStepIn);
-		$btnStep = $('<button class="stepout">').appendTo($consoleToolbar).on("click", onStepOut);
+		$btnStep = $('<button class="stepOver">').appendTo($consoleToolbar).on("click", onStepOver);
+		$btnStep = $('<button class="stepInto">').appendTo($consoleToolbar).on("click", onStepInto);
+		$btnStep = $('<button class="stepOut">').appendTo($consoleToolbar).on("click", onStepOut);
 		$consoleToolbar.append('<div class="title">Console</div>');
 		$consoleToolbar.append('<a href="#" class="close">&times;</a>');
 		$console.append($consoleToolbar);
