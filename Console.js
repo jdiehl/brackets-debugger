@@ -86,7 +86,7 @@ define(function (require, exports, module) {
 			$consolePrompt.val("");
 			_add("out", command);
 			_history.push(command);
-			Inspector.Runtime.evaluate(command, function (res) {
+			Debugger.evaluate(command, function (res) {
 				_add("in", res.result, res.wasThrown);
 			});
 			break;
@@ -139,7 +139,7 @@ define(function (require, exports, module) {
     }
 
     function _onDisconnect() {
-    	toggle(false);
+		toggle(false);
     }
 
 	// init

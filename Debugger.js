@@ -41,12 +41,14 @@ define(function (require, exports, module) {
 	// WebInspector Event: Debugger.paused
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
+		_callFrames = res.callFrames;
 		$exports.trigger("paused", res);
 	}
 
 	// WebInspector Event: Debugger.resumed
 	function _onResumed(res) {
 		// res = {}
+		_callFrames = null;
 		$exports.trigger("resumed");
 	}
 
@@ -84,6 +86,15 @@ define(function (require, exports, module) {
 			_removeBreakpoint(doc, line, id);
 		} else {
 			_setBreakpoint(doc, line);
+		}
+	}
+
+	// evaluate an expression in the active call frame
+	function evaluate(expression, callback) {
+		if (_callFrames) {
+			Inspector.Debugger.evaluateOnCallFrame(_callFrames[0].callFrameId, expression, callback);
+		} else {
+			Inspector.Runtime.evaluate(expression, callback);
 		}
 	}
 
@@ -189,4 +200,5 @@ define(function (require, exports, module) {
 	exports.stepInto = stepInto;
 	exports.stepOut = stepOut;
 	exports.toggleBreakpoint = toggleBreakpoint;
+	exports.evaluate = evaluate;
 });
