@@ -4,11 +4,11 @@ This extension adds debugging capabilities to Brackets.
 
 ## Install
 
-Clone the extension manager into the disabled extensions folder from Brackets:
+Clone the debugger into the disabled extensions folder from Brackets:
 
-    git clone git://github.com/jdiehl/brackets-extension-manager.git brackets/src/extensions/disabled/debugger
+    git clone git://github.com/jdiehl/brackets-debugger.git brackets/src/extensions/disabled/debugger
 
-Create a link to enable the extension manager:
+Create a link to enable the debugger:
 
     ln -s brackets/src/extensions/disabled/debugger brackets/src/extensions/user/debugger
 
