@@ -91,17 +91,17 @@ define(function (require, exports, module) {
 	/** Init Functions *******************************************************/
 	// load the CSS style
 	function loadStyle() {
-        var request = new XMLHttpRequest();
-        request.open("GET", extensionPath + "/Debugger.less", true);
-        request.onload = function onLoad(event) {
-            var parser = new less.Parser();
-            parser.parse(request.responseText, function onParse(err, tree) {
-                console.assert(!err, err);
-                $style = $("<style>" + tree.toCSS() + "</style>")
-                    .appendTo(window.document.head);
-            });
-        };
-        request.send(null);
+		var request = new XMLHttpRequest();
+		request.open("GET", extensionPath + "/Debugger.less", true);
+		request.onload = function onLoad(event) {
+			var parser = new less.Parser();
+			parser.parse(request.responseText, function onParse(err, tree) {
+				console.assert(!err, err);
+				$style = $("<style>" + tree.toCSS() + "</style>")
+					.appendTo(window.document.head);
+			});
+		};
+		request.send(null);
 	}
 
 	// init
