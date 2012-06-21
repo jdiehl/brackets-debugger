@@ -35,7 +35,6 @@ define(function (require, exports, module) {
 	var Debugger = require("Debugger");
 	var $Debugger = $(Debugger);
 
-	var extensionPath = "extensions/user/Debugger";
 	var $style;
 
 
@@ -91,17 +90,18 @@ define(function (require, exports, module) {
 	/** Init Functions *******************************************************/
 	// load the CSS style
 	function loadStyle() {
-        var request = new XMLHttpRequest();
-        request.open("GET", extensionPath + "/Debugger.less", true);
-        request.onload = function onLoad(event) {
-            var parser = new less.Parser();
-            parser.parse(request.responseText, function onParse(err, tree) {
-                console.assert(!err, err);
-                $style = $("<style>" + tree.toCSS() + "</style>")
-                    .appendTo(window.document.head);
-            });
-        };
-        request.send(null);
+		var lessPath = require.toUrl('./Debugger.less');
+		var request = new XMLHttpRequest();
+		request.open("GET", lessPath, true);
+		request.onload = function onLoad(event) {
+			var parser = new less.Parser();
+			parser.parse(request.responseText, function onParse(err, tree) {
+				console.assert(!err, err);
+				$style = $("<style>" + tree.toCSS() + "</style>")
+					.appendTo(window.document.head);
+			});
+		};
+		request.send(null);
 	}
 
 	// init
