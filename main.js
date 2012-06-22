@@ -94,7 +94,10 @@ define(function (require, exports, module) {
 		var request = new XMLHttpRequest();
 		request.open("GET", lessPath, true);
 		request.onload = function onLoad(event) {
-			var parser = new less.Parser();
+			var parser = new less.Parser({
+				paths: [window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')+1) + require.toUrl('./')],
+				filename: 'Debugger.less'
+			});
 			parser.parse(request.responseText, function onParse(err, tree) {
 				console.assert(!err, err);
 				$style = $("<style>" + tree.toCSS() + "</style>")
