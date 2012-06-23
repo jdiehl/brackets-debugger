@@ -90,21 +90,19 @@ define(function (require, exports, module) {
 	/** Init Functions *******************************************************/
 	// load the CSS style
 	function loadStyle() {
-		var lessPath = require.toUrl('./Debugger.less');
-		var request = new XMLHttpRequest();
-		request.open("GET", lessPath, true);
-		request.onload = function onLoad(event) {
-			var parser = new less.Parser({
-				paths: [window.location.pathname.substr(0, window.location.pathname.lastIndexOf('/')+1) + require.toUrl('./')],
-				filename: 'Debugger.less'
-			});
-			parser.parse(request.responseText, function onParse(err, tree) {
+		var file = "Debugger.less";
+		
+		$.get(require.toUrl(file), function (lessCode) {
+			var bracketsIndex = window.location.pathname;
+			var bracketsRoot  = bracketsIndex.substr(0, bracketsIndex.lastIndexOf('/') + 1);
+			var extensionRoot = bracketsRoot + require.toUrl('./');
+			
+			var parser = new less.Parser({ filename: file, paths: [extensionRoot] });
+			parser.parse(lessCode, function onParse(err, tree) {
 				console.assert(!err, err);
-				$style = $("<style>" + tree.toCSS() + "</style>")
-					.appendTo(window.document.head);
+				$("<style>").text(tree.toCSS()).appendTo(window.document.head);
 			});
-		};
-		request.send(null);
+		});
 	}
 
 	// init
