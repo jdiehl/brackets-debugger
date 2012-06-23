@@ -50,8 +50,8 @@ define(function (require, exports, module) {
 	/** Find this extension's directory relative to the brackets root */
 	function _extensionDirForBrowser() {
 		var bracketsIndex = window.location.pathname;
-		var bracketsDir  = bracketsIndex.substr(0, bracketsIndex.lastIndexOf('/') + 1);
-		var extensionDir = bracketsDir + require.toUrl('./');
+		var bracketsDir   = bracketsIndex.substr(0, bracketsIndex.lastIndexOf('/') + 1);
+		var extensionDir  = bracketsDir + require.toUrl('./');
 
 		return extensionDir;
 	}
