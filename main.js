@@ -47,6 +47,30 @@ define(function (require, exports, module) {
 		return null;
 	}
 
+	/** Find this extension's directory relative to the brackets root */
+	function _extensionDirForBrowser() {
+		var bracketsIndex = window.location.pathname;
+		var bracketsDir  = bracketsIndex.substr(0, bracketsIndex.lastIndexOf('/') + 1);
+		var extensionDir = bracketsDir + require.toUrl('./');
+
+		return extensionDir;
+	}
+
+	/** Loads a less file as CSS into the document */
+	function _loadLessFile(file, dir) {
+		// Load the Less code
+		$.get(dir + file, function (code) {
+			// Parse it
+			var parser = new less.Parser({ filename: file, paths: [dir] });
+			parser.parse(code, function onParse(err, tree) {
+				console.assert(!err, err);
+				// Convert it to CSS and append that to the document head
+				$("<style>").text(tree.toCSS()).appendTo(window.document.head);
+			});
+		});
+	}
+
+
 	/** Event Handlers *******************************************************/
 	function onLineNumberClick(event) {
 		var $elem = $(event.currentTarget);
@@ -90,19 +114,7 @@ define(function (require, exports, module) {
 	/** Init Functions *******************************************************/
 	// load the CSS style
 	function loadStyle() {
-		var file = "Debugger.less";
-		
-		$.get(require.toUrl(file), function (lessCode) {
-			var bracketsIndex = window.location.pathname;
-			var bracketsRoot  = bracketsIndex.substr(0, bracketsIndex.lastIndexOf('/') + 1);
-			var extensionRoot = bracketsRoot + require.toUrl('./');
-			
-			var parser = new less.Parser({ filename: file, paths: [extensionRoot] });
-			parser.parse(lessCode, function onParse(err, tree) {
-				console.assert(!err, err);
-				$("<style>").text(tree.toCSS()).appendTo(window.document.head);
-			});
-		});
+		_loadLessFile("debugger.less", _extensionDirForBrowser());
 	}
 
 	// init
