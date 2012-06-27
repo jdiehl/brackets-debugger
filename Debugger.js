@@ -85,7 +85,7 @@ define(function (require, exports, module) {
 		if (id) {
 			_removeBreakpoint(doc, line, id);
 		} else {
-			_setBreakpoint(doc, line);
+			_setBreakpointInDocument(doc, line);
 		}
 	}
 
@@ -100,12 +100,14 @@ define(function (require, exports, module) {
 
 
 	/** Private Functions *******************************************************/
-	function _setBreakpoint(doc, line) {
-		var debuggerLocation = _debuggerLocationForDocument(doc, line);
-		
+	function _setBreakpoint(debuggerLocation) {
 		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
 			_onSetBreakpoint(result.breakpointId, result.actualLocation);
 		});
+	}
+	
+	function _setBreakpointInDocument(doc, line) {
+		_setBreakpoint(_debuggerLocationForDocument(doc, line));
 	}
 
 	function _removeBreakpoint(doc, line, id) {
@@ -140,11 +142,26 @@ define(function (require, exports, module) {
 	function _onSetBreakpoint(id, location) {
 		var url		= ScriptAgent.scriptWithId(location.scriptId).url;
 		var line	= location.lineNumber;
-		
-		if (! _breakpoints[url]) { _breakpoints[url] = []; }
+
+		if (! _breakpoints[url]) { _breakpoints[url] = {}; }
 		_breakpoints[url][line] = id;
 		
 		$exports.triggerHandler('setBreakpoint', [url, line]);
+	}
+
+	function _onScriptParsed(result) {
+		// res = {scriptId, url, startLine, startColumn, endLine, endColumn, isContentScript, sourceMapURL}
+		if (! _breakpoints[result.url]) { return; }
+		
+		$.each(_breakpoints[result.url], function (line, id) {
+			var debuggerLocation = {
+				scriptId: result.scriptId,
+				// Object keys are strings, but an int is required
+				lineNumber: parseInt(line, 10),
+				columnNumber: 0
+			};
+			_setBreakpoint(debuggerLocation);
+		});
 	}
 
 	function _onRemoveBreakpoint(doc, line) {
@@ -164,12 +181,14 @@ define(function (require, exports, module) {
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.load();
 		}
+		Inspector.on("Debugger.scriptParsed", _onScriptParsed);
 	}
 
 	function _onDisconnect() {
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.unload();
 		}
+		Inspector.off("Debugger.scriptParsed", _onScriptParsed);
 	}
 
 	/** Init Functions *******************************************************/
