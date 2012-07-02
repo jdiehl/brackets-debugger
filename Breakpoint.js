@@ -117,13 +117,19 @@ define(function (require, exports, module) {
 		// res = {breakpointId, location}
 		var breakpoint = _breakpoints[res.breakpointId];
 		if (breakpoint) {
-			breakpoint._addResolvedLocations([location]);
+			breakpoint._addResolvedLocations([res.location]);
 		}
 	}
 
 	// Inspector connected
 	function _onConnect() {
 		Inspector.Debugger.enable();
+		for (var i in _breakpoints) {
+			var b = _breakpoints[i];
+			if (b.active) {
+				b.set();
+			}
+		}
 	}
 
 	// Init
@@ -164,5 +170,6 @@ define(function (require, exports, module) {
 	exports.init = init;
 	exports.unload = unload;
 	exports.find = find;
+	exports.findResolved = findResolved;
 	exports.Breakpoint = Breakpoint;
 });
