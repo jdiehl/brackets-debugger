@@ -64,6 +64,13 @@ define(function (require, exports, module) {
 		Inspector.Debugger.stepOut();
 	}
 
+	function setTracepoint(location) {
+		var breakpoint = new Breakpoint.Breakpoint(location);
+		breakpoint.autoResume = true;
+		breakpoint.trace = [];
+		breakpoint.set();
+	}
+
 	// toggle a breakpoint
 	function toggleBreakpoint(location) {
 		var breakpoint = Breakpoint.find(location);
@@ -90,17 +97,32 @@ define(function (require, exports, module) {
 	// WebInspector Event: Debugger.paused
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
-		_paused = res;
-		_paused.location = _paused.callFrames[0].location;
-		_paused.breakpoints = Breakpoint.findResolved(_paused.location);
-		$exports.triggerHandler("paused", _paused);
+		if (res.reason !== "other") return;
+		res.location = res.callFrames[0].location;
+		var breakpoints = Breakpoint.findResolved(res.location);
+		if (breakpoints.length === 0) return;
+		var halt = false;
+		for (var i in breakpoints) {
+			var b = breakpoints[i];
+			if (!b.autoResume) halt = true;
+			if (b.trace) b.trace.push({ date: new Date().getTime(), callFrames: res.callFrames });
+			$exports.triggerHandler("trace", b);
+		}
+		if (halt) {
+			_paused = res;
+			$exports.triggerHandler("paused", _paused);
+		} else {
+			setTimeout(resume);
+		}
 	}
 
 	// WebInspector Event: Debugger.resumed
 	function _onResumed(res) {
 		// res = {}
-		$exports.triggerHandler("resumed", _paused);
-		_paused = undefined;
+		if (_paused) {
+			$exports.triggerHandler("resumed", _paused);
+			_paused = undefined;
+		}
 	}
 
 	function _onResolveBreakpoint(event, res) {
@@ -137,5 +159,6 @@ define(function (require, exports, module) {
 	exports.stepInto = stepInto;
 	exports.stepOut = stepOut;
 	exports.toggleBreakpoint = toggleBreakpoint;
+	exports.setTracepoint = setTracepoint;
 	exports.evaluate = evaluate;
 });

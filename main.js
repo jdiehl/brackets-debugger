@@ -91,7 +91,6 @@ define(function (require, exports, module) {
 		editor._codeMirror.clearMarker(location.lineNumber, null, "breakpoint");
 	}
 
-	var _pausedLine;
 	function onPaused(event, res) {
 		var editor = _editorForURL(res.location.url);
 		editor.setCursorPos(res.location.lineNumber, res.location.columnNumber);
@@ -103,6 +102,12 @@ define(function (require, exports, module) {
 			var editor = _editorForURL(res.location.url);
 			editor._codeMirror.setLineClass(res.location.lineNumber);
 		}
+	}
+
+	function onTrace(event, breakpoint) {
+		var editor = _editorForURL(breakpoint.location.url);
+		editor._codeMirror.setLineClass(breakpoint.location.lineNumber);
+		editor._codeMirror.setLineClass(breakpoint.location.lineNumber, "trace");
 	}
 
 	/** Init Functions *******************************************************/
@@ -123,6 +128,7 @@ define(function (require, exports, module) {
 		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
 		$Debugger.on("paused", onPaused);
 		$Debugger.on("resumed", onResumed);
+		$Debugger.on("trace", onTrace);
 
 		// register for code mirror click events
 		$("body").on("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
