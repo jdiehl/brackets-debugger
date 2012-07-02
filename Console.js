@@ -173,6 +173,8 @@ define(function (require, exports, module) {
 		Inspector.on("disconnect", _onDisconnect);
 		Inspector.on("Console.messageAdded", _onMessageAdded);
 		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
+
+		if (Inspector.connected()) _onConnect();
 	}
 
 	function unload() {

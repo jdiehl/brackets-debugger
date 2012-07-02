@@ -31,26 +31,11 @@ define(function (require, exports, module) {
 		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent"),
 		LiveDevelopment = brackets.getModule("LiveDevelopment/LiveDevelopment");
 
+	var Breakpoint = require("Breakpoint");
+	
 	var $exports = $(exports);
+	var _paused;
 
-	var _breakpoints = {};
-	var _callFrames;
-
-	/** Event Handlers *******************************************************/
-
-	// WebInspector Event: Debugger.paused
-	function _onPaused(res) {
-		// res = {callFrames, reason, data}
-		_callFrames = res.callFrames;
-		$exports.trigger("paused", res);
-	}
-
-	// WebInspector Event: Debugger.resumed
-	function _onResumed(res) {
-		// res = {}
-		_callFrames = null;
-		$exports.trigger("resumed");
-	}
 
 	/** Actions **************************************************************/
 
@@ -80,134 +65,67 @@ define(function (require, exports, module) {
 	}
 
 	// toggle a breakpoint
-	function toggleBreakpoint(doc, line) {
-		var id = _findBreakpoint(doc, line);
-		if (id) {
-			_removeBreakpoint(doc, line, id);
-		} else {
-			_setBreakpointInDocument(doc, line);
+	function toggleBreakpoint(location) {
+		var breakpoint = Breakpoint.find(location);
+		if (!breakpoint) {
+			breakpoint = new Breakpoint.Breakpoint(location);
+			$(breakpoint)
+				.on("resolve", _onResolveBreakpoint)
+				.on("remove", _onRemoveBreakpoint);
 		}
+		breakpoint.toggle();
 	}
 
 	// evaluate an expression in the active call frame
 	function evaluate(expression, callback) {
-		if (_callFrames) {
-			Inspector.Debugger.evaluateOnCallFrame(_callFrames[0].callFrameId, expression, callback);
+		if (_paused) {
+			Inspector.Debugger.evaluateOnCallFrame(_paused.callFrames[0].callFrameId, expression, callback);
 		} else {
 			Inspector.Runtime.evaluate(expression, callback);
 		}
 	}
 
-
-	/** Private Functions *******************************************************/
-	function _setBreakpoint(debuggerLocation) {
-		Inspector.Debugger.setBreakpoint(debuggerLocation, function (result) {
-			_onSetBreakpoint(result.breakpointId, result.actualLocation);
-		});
-	}
-	
-	function _setBreakpointInDocument(doc, line) {
-		_setBreakpoint(_debuggerLocationForDocument(doc, line));
-	}
-
-	function _removeBreakpoint(doc, line, id) {
-		id = id || _findBreakpoint(doc, line);
-		Inspector.Debugger.removeBreakpoint(id, function () {
-			_onRemoveBreakpoint(doc, line);
-		});
-	}
-
-
-	/** Helper Functions *******************************************************/
-	function _findBreakpoint(doc, line) {
-		return _breakpoints[doc.url] && _breakpoints[doc.url][line];
-	}
-	
-	function _debuggerLocationForDocument(doc, line)
-	{
-		return {
-			scriptId: _scriptIdForDocument(doc),
-			lineNumber: line,
-			columnNumber: 0
-		};
-	}
-
-	function _scriptIdForDocument(doc)
-	{
-		var script = ScriptAgent.scriptForURL(doc.url);
-		return script.scriptId;
-	}
-
 	/** Event Handlers *******************************************************/
-	function _onSetBreakpoint(id, location) {
-		var url		= ScriptAgent.scriptWithId(location.scriptId).url;
-		var line	= location.lineNumber;
 
-		if (! _breakpoints[url]) { _breakpoints[url] = {}; }
-		_breakpoints[url][line] = id;
-		
-		$exports.triggerHandler('setBreakpoint', [url, line]);
+	// WebInspector Event: Debugger.paused
+	function _onPaused(res) {
+		// res = {callFrames, reason, data}
+		_paused = res;
+		_paused.location = _paused.callFrames[0].location;
+		_paused.breakpoints = Breakpoint.findResolved(_paused.location);
+		$exports.triggerHandler("paused", _paused);
 	}
 
-	function _onScriptParsed(result) {
-		// res = {scriptId, url, startLine, startColumn, endLine, endColumn, isContentScript, sourceMapURL}
-		if (! _breakpoints[result.url]) { return; }
-		
-		$.each(_breakpoints[result.url], function (line, id) {
-			var debuggerLocation = {
-				scriptId: result.scriptId,
-				// Object keys are strings, but an int is required
-				lineNumber: parseInt(line, 10),
-				columnNumber: 0
-			};
-			_setBreakpoint(debuggerLocation);
-		});
+	// WebInspector Event: Debugger.resumed
+	function _onResumed(res) {
+		// res = {}
+		$exports.triggerHandler("resumed", _paused);
+		_paused = undefined;
 	}
 
-	function _onRemoveBreakpoint(doc, line) {
-		var url = doc.url;
-		
-		delete _breakpoints[url][line];
-		if (_breakpoints[url].length === 0) {
-			delete _breakpoints[url];
+	function _onResolveBreakpoint(event, res) {
+		$exports.triggerHandler('setBreakpoint', res.location);
+	}
+
+	function _onRemoveBreakpoint(event, res) {
+		var locations = res.breakpoint.resolvedLocations;
+		for (var i in locations) {
+			$exports.triggerHandler('removeBreakpoint', locations[i]);
 		}
-		
-		$exports.triggerHandler('removeBreakpoint', [url, line]);
-	}
-
-	function _onConnect() {
-		Inspector.Debugger.enable();
-		// load the script agent if necessary
-		if (!LiveDevelopment.agents.script) {
-			ScriptAgent.load();
-		}
-		Inspector.on("Debugger.scriptParsed", _onScriptParsed);
-	}
-
-	function _onDisconnect() {
-		if (!LiveDevelopment.agents.script) {
-			ScriptAgent.unload();
-		}
-		Inspector.off("Debugger.scriptParsed", _onScriptParsed);
 	}
 
 	/** Init Functions *******************************************************/
 	
 	// init
 	function init() {
-		Inspector.on("connect", _onConnect);
-		Inspector.on("disconnect", _onDisconnect);
 		Inspector.on("Debugger.paused", _onPaused);
 		Inspector.on("Debugger.resumed", _onResumed);
 	}
 
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Debugger.paused", _onPaused);
 		Inspector.off("Debugger.resumed", _onResumed);
-		$exports.off("setBreakpoint removeBreakpoint paused resumed");
-		_onDisconnect();
+		$exports.off();
 	}
 
 	// public methods

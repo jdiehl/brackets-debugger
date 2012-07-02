@@ -33,7 +33,7 @@ define(function (require, exports, module) {
 
 	var Console  = require("Console");
 	var Debugger = require("Debugger");
-	var $Debugger = $(Debugger);
+	var Breakpoint = require("Breakpoint");
 
 	var $style;
 
@@ -74,60 +74,51 @@ define(function (require, exports, module) {
 	/** Event Handlers *******************************************************/
 	function onLineNumberClick(event) {
 		var $elem = $(event.currentTarget);
-		var line = $elem.index();
 		var doc = DocumentManager.getCurrentDocument();
-		var enabled = Debugger.toggleBreakpoint(doc, line);
+		var location = { url: doc.url, lineNumber: $elem.index() };
+		Debugger.toggleBreakpoint(location);
 	}
 
-	function onSetBreakpoint(event, url, line) {
-		var editor = _editorForURL(url);
+	function onSetBreakpoint(event, location) {
+		var editor = _editorForURL(location.url);
 		if (!editor) return;
-		editor._codeMirror.setMarker(line, null, "breakpoint");
+		editor._codeMirror.setMarker(location.lineNumber, null, "breakpoint");
 	}
 
-	function onRemoveBreakpoint(event, url, line) {
-		var editor = _editorForURL(url);
+	function onRemoveBreakpoint(event, location) {
+		var editor = _editorForURL(location.url);
 		if (!editor) return;
-		editor._codeMirror.clearMarker(line, null, "breakpoint");
+		editor._codeMirror.clearMarker(location.lineNumber, null, "breakpoint");
 	}
 
 	var _pausedLine;
 	function onPaused(event, res) {
-		var frame = res.callFrames[0];
-		var location = frame.location;
-		var url = ScriptAgent.scriptWithId(location.scriptId).url;
-		var editor = _editorForURL(url);
-		if (!editor) return;
-
-		_pausedLine = location.lineNumber;
-		editor.setCursorPos(_pausedLine, location.columnNumber);
-		editor._codeMirror.setLineClass(_pausedLine, "paused");
+		var editor = _editorForURL(res.location.url);
+		editor.setCursorPos(res.location.lineNumber, res.location.columnNumber);
+		editor._codeMirror.setLineClass(res.location.lineNumber, "paused");
 	}
 
-	function onResumed(event) {
-		if (_pausedLine) {
-			var editor = EditorManager.getCurrentFullEditor();
-			editor._codeMirror.setLineClass(_pausedLine);
+	function onResumed(event, res) {
+		if (res.location) {
+			var editor = _editorForURL(res.location.url);
+			editor._codeMirror.setLineClass(res.location.lineNumber);
 		}
 	}
 
 	/** Init Functions *******************************************************/
-	// load the CSS style
-	function loadStyle() {
-		_loadLessFile("debugger.less", _extensionDirForBrowser());
-	}
-
 	// init
 	function init() {
 
 		// load styles
-		loadStyle();
+		_loadLessFile("debugger.less", _extensionDirForBrowser());
 
 		// init modules
 		Debugger.init();
 		Console.init();
+		Breakpoint.init();
 
 		// register for debugger events
+		var $Debugger = $(Debugger);
 		$Debugger.on("setBreakpoint", onSetBreakpoint);
 		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
 		$Debugger.on("paused", onPaused);
@@ -137,16 +128,16 @@ define(function (require, exports, module) {
 		$("body").on("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
 	}
 
+	// unload
 	function unload() {
 		Console.unload();
 		Debugger.unload();
 		$style.remove();
-		$(DocumentManager).off("currentDocumentChange", onCurrentDocumentChange);
 		$("body").off("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
 	}
 
 	exports.init = init;
 	exports.unload = unload;
 
-	init();
+	$(init);
 });
