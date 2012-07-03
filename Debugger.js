@@ -101,15 +101,21 @@ define(function (require, exports, module) {
 		if (res.reason !== "other") return;
 		res.location = res.callFrames[0].location;
 		var breakpoints = Breakpoint.findResolved(res.location);
-		if (breakpoints.length === 0) return;
-		var halt = false;
+		// Halt if no breakpoints match (i.e. when clicking pause)
+		var halt = breakpoints.length === 0;
+		// Otherwise halt only for breakpoints autoResume == false
 		for (var i in breakpoints) {
 			var b = breakpoints[i];
-			if (!b.autoResume) halt = true;
-			if (b.trace) b.trace.push({ date: new Date().getTime(), callFrames: res.callFrames });
-			$exports.triggerHandler("trace", b);
+			if (! b.autoResume) {
+				halt = true;
+			}
+			if (b.trace) {
+				b.trace.push({ date: new Date().getTime(), callFrames: res.callFrames });
+				$exports.triggerHandler("trace", b);
+			}
 		}
 		if (halt) {
+			res.location.url = ScriptAgent.scriptWithId(res.location.scriptId).url;
 			_paused = res;
 			$exports.triggerHandler("paused", _paused);
 		} else {
@@ -127,13 +133,31 @@ define(function (require, exports, module) {
 	}
 
 	function _onResolveBreakpoint(event, res) {
+		res.location.url = ScriptAgent.scriptWithId(res.location.scriptId).url;
 		$exports.triggerHandler('setBreakpoint', res.location);
 	}
 
 	function _onRemoveBreakpoint(event, res) {
 		var locations = res.breakpoint.resolvedLocations;
 		for (var i in locations) {
+			locations[i].url = ScriptAgent.scriptWithId(locations[i].scriptId).url;
 			$exports.triggerHandler('removeBreakpoint', locations[i]);
+		}
+	}
+
+	// When Live Development is turned on
+	function _onConnect() {
+		Inspector.Debugger.enable();
+		// load the script agent if necessary
+		if (!LiveDevelopment.agents.script) {
+			ScriptAgent.load();
+		}
+	}
+
+	// When Live Development is turned off
+	function _onDisconnect() {
+		if (!LiveDevelopment.agents.script) {
+			ScriptAgent.unload();
 		}
 	}
 
@@ -141,14 +165,19 @@ define(function (require, exports, module) {
 	
 	// init
 	function init() {
+		Inspector.on("connect", _onConnect);
+		Inspector.on("disconnect", _onDisconnect);
 		Inspector.on("Debugger.paused", _onPaused);
 		Inspector.on("Debugger.resumed", _onResumed);
 	}
 
 	function unload() {
+		Inspector.off("connect", _onConnect);
+		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Debugger.paused", _onPaused);
 		Inspector.off("Debugger.resumed", _onResumed);
 		$exports.off();
+		_onDisconnect();
 	}
 
 	// public methods
