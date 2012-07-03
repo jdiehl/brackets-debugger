@@ -15,11 +15,12 @@
 	}
 }
 .CodeMirror-lines {
-	.paused {
-		background: #fe9;
-		box-shadow: 0 0 2px #fe9, 0 0 4px #fe9, 0 0 6px #fe9;
+	.paused, .trace {
 		border-radius: 50px;
-		color: #000;
+		box-shadow: 0 0 2px #fe9, 0 0 4px #fe9, 0 0 6px #fe9;
+		background-color: #fe9;
+	}
+	.paused {
 		&:before {
 			content: "";
 			display: block;
@@ -33,16 +34,14 @@
 		}
 	} 
     .trace {
-       -webkit-animation: trace 1s;
+       -webkit-animation: trace 1s ease-out;
     }
 }
   
 @-webkit-keyframes trace {
-    from {
-        background: #fe9;
-    }
     to {
         background: inherit;
+		box-shadow: none;
     }
 }
 
