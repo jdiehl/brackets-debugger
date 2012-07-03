@@ -121,6 +121,17 @@ define(function (require, exports, module) {
 		}
 	}
 
+	// Inspector Event: Debugger.globalObjectCleared
+	function _onGlobalObjectCleared() {
+		// Reset the trace array for all tracepoints
+		for (var i in _breakpoints) {
+			var b = _breakpoints[i];
+			if (b.trace) {
+				b.trace = [];
+			}
+		}
+	}
+
 	// Inspector connected
 	function _onConnect() {
 		Inspector.Debugger.enable();
@@ -136,6 +147,7 @@ define(function (require, exports, module) {
 	function init() {
 		Inspector.on("connect", _onConnect);
 		Inspector.on("Debugger.breakpointResolved", _onBreakpointResolved);
+		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 		if (Inspector.connected()) _onConnect();
 	}
 
@@ -143,6 +155,7 @@ define(function (require, exports, module) {
 	function unload() {
 		Inspector.off("connect", _onConnect);
 		Inspector.off("Debugger.breakpointResolved", _onBreakpointResolved);
+		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 	}
 
 	// Find resolved breakpoints
