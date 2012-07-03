@@ -31,10 +31,14 @@ define(function (require, exports, module) {
 
 	var _breakpoints = {};
 
+	var nextNumber = 1;
+
 	// Breakpoints Class
 	function Breakpoint(location, condition) {
 		this.location = location;
 		this.condition = condition;
+		
+		this.number = nextNumber++;
 		this.active = false;
 	}
 
@@ -43,8 +47,10 @@ define(function (require, exports, module) {
 
 		// clear the breakpoint in the Inspector
 		set: function () {
-			var self = this;
+			_breakpoints[this.number] = this;
 			this.active = true;
+			
+			var self = this;
 			var l = this.location;
 			Inspector.Debugger.setBreakpointByUrl(l.lineNumber, l.url, l.urlRegex, l.columnNumber, this.condition, function (res) {
 				// res = {breakpointId, locations}
@@ -52,18 +58,18 @@ define(function (require, exports, module) {
 				self.resolvedLocations = [];
 				$(self).triggerHandler("set", { breakpoint: self });
 				self._addResolvedLocations(res.locations);
-				_breakpoints[self.id] = self;
 			});
 		},
 
 		// remove the breakpoint in the Inspector
 		remove: function () {
-			var self = this;
+			delete _breakpoints[this.number];
 			this.active = false;
+			
+			var self = this;
 			Inspector.Debugger.removeBreakpoint(this.id, function (res) {
 				// res = {}
 				$(self).triggerHandler("remove", { breakpoint: self });
-				delete _breakpoints[self.id];
 				delete self.id;
 				delete self.resolvedLocations;
 			});
@@ -95,7 +101,7 @@ define(function (require, exports, module) {
 					l.lineNumber === location.lineNumber &&
 					l.columnNumber === location.columnNumber) {
 					return true;
-			}
+				}
 			}
 			return false;
 		},
@@ -116,7 +122,7 @@ define(function (require, exports, module) {
 	// Inspector Event: breakpoint resolved
 	function _onBreakpointResolved(res) {
 		// res = {breakpointId, location}
-		var breakpoint = _breakpoints[res.breakpointId];
+		var breakpoint = findById(res.breakpointId);
 		if (breakpoint) {
 			breakpoint._addResolvedLocations([res.location]);
 		}
@@ -176,6 +182,15 @@ define(function (require, exports, module) {
 		for (var i in _breakpoints) {
 			var b = _breakpoints[i];
 			if (b.matches(location, condition)) {
+				return b;
+			}
+		}
+	}
+
+	function findById(id) {
+		for (var i in _breakpoints) {
+			var b = _breakpoints[i];
+			if (b.id === id) {
 				return b;
 			}
 		}
