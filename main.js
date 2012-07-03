@@ -39,9 +39,10 @@ define(function (require, exports, module) {
 
 
 	/** Helper Functions *****************************************************/
+	
 	function _editorForURL(url) {
 		var doc = DocumentManager.getCurrentDocument();
-		if (doc && doc.url) {
+		if (doc && doc.url === url) {
 			return EditorManager.getCurrentFullEditor();
 		}
 		return null;
