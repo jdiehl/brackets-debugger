@@ -91,10 +91,11 @@ define(function (require, exports, module) {
 		matchesResolved: function (location) {
 			for (var i in this.resolvedLocations) {
 				var l = this.resolvedLocations[i];
-				if (l.url === location.url &&
+				if (l.scriptId === location.scriptId &&
 					l.lineNumber === location.lineNumber &&
-					l.columnNumber === location.columnNumber)
+					l.columnNumber === location.columnNumber) {
 					return true;
+			}
 			}
 			return false;
 		},
