@@ -115,6 +115,11 @@ define(function (require, exports, module) {
 				this.resolvedLocations.push(location);
 				$this.triggerHandler("resolve", { breakpoint: this, location: location });
 			}
+		},
+
+		// reset the trace
+		_reset: function () {
+			this.trace = [];
 		}
 
 	};
@@ -132,10 +137,7 @@ define(function (require, exports, module) {
 	function _onGlobalObjectCleared() {
 		// Reset the trace array for all tracepoints
 		for (var i in _breakpoints) {
-			var b = _breakpoints[i];
-			if (b.trace) {
-				b.trace = [];
-			}
+			_breakpoints[i]._reset();
 		}
 	}
 
