@@ -82,6 +82,7 @@ define(function (require, exports, module) {
 				.on("remove", _onRemoveBreakpoint);
 		}
 		breakpoint.toggle();
+		return breakpoint;
 	}
 
 	// evaluate an expression in the active call frame
