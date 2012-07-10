@@ -35,6 +35,7 @@ define(function (require, exports, module) {
 	
 	var $exports = $(exports);
 	var _paused;
+	var _breakOnTracepoints = false;
 
 
 	/** Actions **************************************************************/
@@ -94,6 +95,16 @@ define(function (require, exports, module) {
 		}
 	}
 
+	// break on tracepoints
+	function breakOnTracepoints() {
+		return _breakOnTracepoints;
+	}
+
+	// enable or disable break on tracepoints
+	function setBreakOnTracepoints(flag) {
+		_breakOnTracepoints = flag;
+	}
+
 	/** Event Handlers *******************************************************/
 
 	// WebInspector Event: Debugger.paused
@@ -108,7 +119,7 @@ define(function (require, exports, module) {
 		for (var i in breakpoints) {
 			var b = breakpoints[i];
 			b.addTrace(res);
-			if (! b.autoResume) {
+			if (!b.autoResume || _breakOnTracepoints) {
 				halt = true;
 			} else {
 				$exports.triggerHandler("trace", b);
@@ -191,4 +202,6 @@ define(function (require, exports, module) {
 	exports.toggleBreakpoint = toggleBreakpoint;
 	exports.setTracepoint = setTracepoint;
 	exports.evaluate = evaluate;
+	exports.breakOnTracepoints = breakOnTracepoints;
+	exports.setBreakOnTracepoints = setBreakOnTracepoints;
 });
