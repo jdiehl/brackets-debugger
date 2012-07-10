@@ -230,7 +230,6 @@ define(function (require, exports, module) {
 	}
 
 	function onTrace(event, breakpoint) {
-		console.log("Trace!", breakpoint.location.url.replace(/^.*\//, ''), "line", breakpoint.location.lineNumber);
 		var editor = _editorForURL(breakpoint.location.url);
 		if (! editor) { return; }
 
