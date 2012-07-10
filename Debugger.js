@@ -120,7 +120,7 @@ define(function (require, exports, module) {
 			_paused = res;
 			$exports.triggerHandler("paused", _paused);
 		} else {
-			setTimeout(resume);
+			resume();
 		}
 	}
 
