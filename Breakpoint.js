@@ -106,6 +106,14 @@ define(function (require, exports, module) {
 			return false;
 		},
 
+		// add trace information
+		addTrace: function (res) {
+			if (this.trace) {
+				this.trace.push({ date: new Date().getTime(), callFrames: res.callFrames });
+				$(this).triggerHandler("trace", this);
+			}
+		},
+
 		// add a resolved location
 		_addResolvedLocations: function (locations) {
 			var $this = $(this), i, location;

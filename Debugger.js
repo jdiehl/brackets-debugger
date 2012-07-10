@@ -107,11 +107,10 @@ define(function (require, exports, module) {
 		// Otherwise halt only for breakpoints autoResume == false
 		for (var i in breakpoints) {
 			var b = breakpoints[i];
+			b.addTrace(res);
 			if (! b.autoResume) {
 				halt = true;
-			}
-			if (b.trace) {
-				b.trace.push({ date: new Date().getTime(), callFrames: res.callFrames });
+			} else {
 				$exports.triggerHandler("trace", b);
 			}
 		}
