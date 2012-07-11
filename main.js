@@ -39,6 +39,8 @@ define(function (require, exports, module) {
 	var $style;
 	var traceLineTimeouts = {};
 	var tracepointsForUrl = {};
+	var previousHoverPos;
+	var previousHoverToken;
 
 	/** Helper Functions *****************************************************/
 	
@@ -195,6 +197,35 @@ define(function (require, exports, module) {
 
 	/** Event Handlers *******************************************************/
 	
+	function onLinesMouseOut(event) {
+		previousHoverPos   = null;
+		previousHoverToken = null;
+	}
+
+	function onLinesMouseMove(event) {
+		var cm  = EditorManager.getCurrentFullEditor()._codeMirror;
+		var pos = cm.coordsChar({ x: event.clientX, y: event.clientY });
+
+		if (! previousHoverPos || pos.line !== previousHoverPos.line || pos.ch !== previousHoverPos.ch) {
+			previousHoverPos = pos;
+			onCharacterHover(event, pos, cm);
+		}
+	}
+
+	function onCharacterHover(event, pos, cm) {
+		var token = cm.getTokenAt(pos);
+		var p = previousHoverToken;
+		
+		if (! p || token.string !== p.string || token.className !== p.className || token.string !== p.string) {
+			previousHoverToken = token;
+			onTokenHover(event, token, pos, cm);
+		}
+	}
+
+	function onTokenHover(event, token, pos, cm) {
+		//console.log(JSON.stringify(pos), token.string, token.className);
+	}
+
 	function onLineNumberClick(event) {
 		var $elem = $(event.currentTarget);
 		var doc = DocumentManager.getCurrentDocument();
@@ -270,7 +301,11 @@ define(function (require, exports, module) {
 		$Debugger.on("trace", onTrace);
 
 		// register for code mirror click events
-		$("body").on("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
+		$(".CodeMirror-gutter").on("click", "pre", onLineNumberClick);
+		
+		$(".CodeMirror-lines")
+			.on("mousemove", onLinesMouseMove)
+			.on("mouseout", onLinesMouseOut);
 
 		$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
 		$btnBreakEvents.click(onToggleBreakEvents);
@@ -299,7 +334,11 @@ define(function (require, exports, module) {
 		Breakpoint.unload();
 		Parser.unload();
 		$style.remove();
-		$("body").off("click", ".CodeMirror-gutter-text pre", onLineNumberClick);
+		$(".CodeMirror-gutter").off("click", "pre", onLineNumberClick);
+		
+		$(".CodeMirror-lines")
+			.off("mousemove", onLinesMouseMove)
+			.off("mouseout", onLinesMouseOut);
 	}
 
 	exports.init = init;
