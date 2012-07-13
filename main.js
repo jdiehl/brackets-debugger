@@ -174,39 +174,45 @@ define(function (require, exports, module) {
 			.walk(tree);
 	}
 
-	function resolveScopes(tracepoint, callback) {
+	function resolveVariable(tracepoint, variable) {
 		var noGlobal = function (scope) { return scope.type !== "global"; };
 
+		var result = $.Deferred();
+
 		var trace = tracepoint.trace[tracepoint.trace.length - 1];
-		if (! trace || trace.callFrames.length === 0) { return; }
+		if (! trace || trace.callFrames.length === 0) { return result.reject(); }
 		var callFrameIndex = 0;
 		trace.resolveCallFrame(callFrameIndex, noGlobal).done(function () {
 			var callFrame = trace.callFrames[callFrameIndex];
-			var scopes = [];
+			var found = false;
 			for (var i = 0; i < callFrame.scopeChain.length; i++) {
 				var vars = callFrame.scopeChain[i].resolved;
-				if (vars) {
-					scopes.push(vars);
+				if (vars && vars[variable]) {
+					return result.resolve(vars[variable]);
 				}
 			}
-			callback(scopes);
+			result.reject();
 		});
+
+		return result.promise();
 	}
 
-	function showVariableValue(value, line, fromCol, toCol, cmLinesNode, cm) {
-		var string;
-		if      (value.type === "undefined") { string = "undefined"; }
-		else if (value.type === "number")    { string = value.value; }
-		else if (value.type === "string")    { string = JSON.stringify(value.value); }
-		else if (value.type === "function")  { string = value.description; }
-		else if (value.value === null)       { string = "null"; }
-		else if (value.description)          { string = value.description; }
-		else                                 { string = JSON.stringify(value); }
+	function describeValue(value) {
+		if (value.type === "undefined") { return "undefined"; }
+		if (value.type === "number")    { return value.value; }
+		if (value.type === "string")    { return JSON.stringify(value.value); }
+		if (value.type === "function")  { return value.description; }
+		if (value.value === null)       { return "null"; }
+		if (value.description)          { return value.description; }
+		
+		return JSON.stringify(value);
+	}
 
+	function showValue(value, line, fromCol, toCol, cmLinesNode, cm) {
 		var left   = cm.charCoords({ line: line, ch: fromCol }, "local");
 		var right  = cm.charCoords({ line: line, ch: toCol   }, "local");
 		var middle = left.x + Math.round((right.x - left.x) / 2);
-		var $popup = $("<div>").attr("id", "jdiehl-debugger-variable-value").text(string).appendTo($("> div:last", cmLinesNode));
+		var $popup = $("<div>").attr("id", "jdiehl-debugger-variable-value").text(value).appendTo($("> div:last", cmLinesNode));
 		$popup.css({ left: Math.round(middle - $popup.outerWidth() / 2), top: left.y });
 
 		return $popup;
@@ -299,13 +305,16 @@ define(function (require, exports, module) {
 		var fn = findWrappingFunction(functions, cursor, token);
 		if (! fn) { return; }
 
-		// Resolve the scopes and find the variable in them
-		resolveScopes(fn.tracepoints[1], function (scopes) {
-			for (var i = 0; i < scopes.length; i++) {
-				if (! scopes[i][variable]) { continue; }
-				$popup = showVariableValue(scopes[i][variable], cursor.line, token.start, token.end, cmLinesNode, cm);
-				break;
+		var resolveBefore = resolveVariable(fn.tracepoints[0], variable);
+		var resolveAfter  = resolveVariable(fn.tracepoints[1], variable);
+		$.when(resolveBefore, resolveAfter).done(function (before, after) {
+			before = describeValue(before);
+			after  = describeValue(after);
+			console.log("Done", before, after);
+			if (before !== after) {
+				before += " ↦ " + after;
 			}
+			$popup = showValue(before, cursor.line, token.start, token.end, cmLinesNode, cm);
 		});
 	}
 
