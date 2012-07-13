@@ -66,9 +66,7 @@ define(function (require, exports, module) {
 	}
 
 	function setTracepoint(location) {
-		var breakpoint = new Breakpoint.Breakpoint(location);
-		breakpoint.autoResume = true;
-		breakpoint.trace = [];
+		var breakpoint = new Breakpoint.Breakpoint(location, undefined, true);
 		breakpoint.set();
 		return breakpoint;
 	}
@@ -110,44 +108,52 @@ define(function (require, exports, module) {
 	// WebInspector Event: Debugger.paused
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
+
+		// ignore breaks that are not related to breakpoints (event / DOM)
 		if (res.reason !== "other") return;
-		res.location = res.callFrames[0].location;
-		var breakpoints = Breakpoint.findResolved(res.location);
-		// Halt if no breakpoints match (i.e. when clicking pause)
-		var halt = breakpoints.length === 0;
-		// Otherwise halt only for breakpoints autoResume == false
+
+		// read the location from the top callframe
+		var loc = res.callFrames[0].location;
+
+		// find the breakpoints at that location
+		var breakpoints = Breakpoint.findResolved(loc);
+
+		// determine whether to actually halt by asking all breakpoints
+		var halt = _breakOnTracepoints;
 		for (var i in breakpoints) {
 			var b = breakpoints[i];
-			b.addTrace(res);
-			if (!b.autoResume || _breakOnTracepoints) {
-				halt = true;
-			} else {
-				$exports.triggerHandler("trace", b);
-			}
+			b.triggerPaused(res.callFrames);
+			if (b.haltOnPause) halt = true;
 		}
-		if (halt) {
-			res.location.url = ScriptAgent.scriptWithId(res.location.scriptId).url;
-			_paused = res;
-			$exports.triggerHandler("paused", _paused);
-		} else {
-			resume();
+
+		// halt (if so determined)
+		if (!halt) {
+			Inspector.Debugger.resume();
 		}
+
+		// gather some info about this pause and send the "paused" event
+		_paused = { location: loc, callFrames: res.callFrames, breakpoints: breakpoints, halt: halt };
+		$exports.triggerHandler("paused", _paused);
 	}
 
 	// WebInspector Event: Debugger.resumed
 	function _onResumed(res) {
 		// res = {}
+
+		// send the "resumed" event with the info from the pause
 		if (_paused) {
 			$exports.triggerHandler("resumed", _paused);
 			_paused = undefined;
 		}
 	}
 
+	// Breakpoint Event: breakpoint resolved
 	function _onResolveBreakpoint(event, res) {
 		res.location.url = ScriptAgent.scriptWithId(res.location.scriptId).url;
 		$exports.triggerHandler('setBreakpoint', res.location);
 	}
 
+	// Breakpoint Event: breakpoint removed
 	function _onRemoveBreakpoint(event, res) {
 		var locations = res.breakpoint.resolvedLocations;
 		for (var i in locations) {
@@ -156,7 +162,7 @@ define(function (require, exports, module) {
 		}
 	}
 
-	// When Live Development is turned on
+	// Inspector Event: we are connected to a live session
 	function _onConnect() {
 		Inspector.Debugger.enable();
 		// load the script agent if necessary
@@ -165,7 +171,7 @@ define(function (require, exports, module) {
 		}
 	}
 
-	// When Live Development is turned off
+	// Inspector Event: we are disconnected
 	function _onDisconnect() {
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.unload();

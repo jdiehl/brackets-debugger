@@ -28,24 +28,36 @@ define(function (require, exports, module) {
 	'use strict';
 
 	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var Trace = require("Trace");
 
 	var _breakpoints = {};
 
 	var nextNumber = 1;
 
+	var $exports = $(exports);
+
 	// Breakpoints Class
-	function Breakpoint(location, condition) {
+	function Breakpoint(location, condition, isTracePoint) {
 		this.location = location;
 		this.condition = condition;
+		this.trace = [];
 		
 		this.number = nextNumber++;
 		this.active = false;
+
+		if (isTracePoint) {
+			this.haltOnPause = false;
+			this.traceOnPause = true;
+		} else {
+			this.haltOnPause = true;
+			this.traceOnPause = false;
+		}
 	}
 
 	// Breakpoints Methods
 	Breakpoint.prototype = {
 
-		// clear the breakpoint in the Inspector
+		// set the breakpoint in the Inspector
 		set: function () {
 			_breakpoints[this.number] = this;
 			this.active = true;
@@ -106,32 +118,6 @@ define(function (require, exports, module) {
 			return false;
 		},
 
-		// add trace information
-		addTrace: function (res) {
-			if (!this.trace) return;
-
-			function onResolve(res) {
-				// for now, only save primitive values
-				this.vars = {};
-				for (var i in res.result) {
-					var info = res.result[i];
-					this.vars[info.name] = info.value.value;
-				}
-				console.log(res.result);
-			}
-
-			var callFrames = res.callFrames;
-			this.trace.push({ date: new Date().getTime(), callFrames: callFrames });
-			$(this).triggerHandler("trace", this);
-
-			// resolve call frame scope variables
-			var cf = callFrames[0];
-			if (!cf || !cf) return;
-			for (var i in cf.scopeChain) {
-				Inspector.Runtime.getProperties(cf.scopeChain[i].object.objectId, true, onResolve.bind(cf.scopeChain[i]));
-			}
-		},
-
 		// add a resolved location
 		_addResolvedLocations: function (locations) {
 			var $this = $(this), i, location;
@@ -146,6 +132,14 @@ define(function (require, exports, module) {
 		// reset the trace
 		_reset: function () {
 			this.trace = [];
+		},
+
+		// trigger paused
+		triggerPaused: function (callFrames) {
+			if (this.traceOnPause) {
+				var trace = new Trace.Trace(callFrames);
+				this.trace.push(trace);
+			}
 		}
 
 	};
@@ -191,6 +185,7 @@ define(function (require, exports, module) {
 		Inspector.off("connect", _onConnect);
 		Inspector.off("Debugger.breakpointResolved", _onBreakpointResolved);
 		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		$exports.off();
 	}
 
 	// Find resolved breakpoints
