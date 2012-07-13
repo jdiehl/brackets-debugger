@@ -42,7 +42,7 @@ define(function (require, exports, module) {
 	var functionsForUrl   = {};
 
 	/** Helper Functions *****************************************************/
-	
+
 	function _editorForURL(url) {
 		var doc = DocumentManager.getCurrentDocument();
 		if (doc && doc.url === url) {
@@ -50,9 +50,15 @@ define(function (require, exports, module) {
 		} else {
 			console.log("No editor for url", url);
 		}
-		return null;
+		return undefined;
 	}
 
+	function _editorForLocation(location) {
+		var url = location.url;
+		if (!url) url = ScriptAgent.scriptWithId(location.scriptId).url;
+		return _editorForURL(url);
+	}
+	
 	/** Find this extension's directory relative to the brackets root */
 	function _extensionDirForBrowser() {
 		var bracketsIndex = window.location.pathname;
@@ -242,37 +248,35 @@ define(function (require, exports, module) {
 	}
 
 	function onSetBreakpoint(event, location) {
-		var editor = _editorForURL(location.url);
+		var editor = _editorForLocation(location);
 		if (! editor) return;
 		editor._codeMirror.setMarker(location.lineNumber, null, "breakpoint");
 	}
 
 	function onRemoveBreakpoint(event, location) {
-		var editor = _editorForURL(location.url);
+		var editor = _editorForLocation(location);
 		if (! editor) return;
 		editor._codeMirror.clearMarker(location.lineNumber, null, "breakpoint");
 	}
 
 	function onPaused(event, res) {
-		var editor = _editorForURL(res.location.url);
+		var editor = _editorForLocation(res.location);
 		if (! editor) { return; }
-		editor.setCursorPos(res.location.lineNumber, res.location.columnNumber);
-		editor._codeMirror.setLineClass(res.location.lineNumber, "paused");
-	}
 
-	function onResumed(event, res) {
-		if (res.location) {
-			var editor = _editorForURL(res.location.url);
-			if (! editor) { return; }
-			editor._codeMirror.setLineClass(res.location.lineNumber);
+		if (res.halt) {
+			editor.setCursorPos(res.location.lineNumber, res.location.columnNumber);
+			editor._codeMirror.setLineClass(res.location.lineNumber, "paused");
+		} else {
+			setTemporaryLineClass(editor, res.location.lineNumber, "trace", 1000);
 		}
 	}
 
-	function onTrace(event, breakpoint) {
-		var editor = _editorForURL(breakpoint.location.url);
-		if (! editor) { return; }
-
-		setTemporaryLineClass(editor, breakpoint.location.lineNumber, "trace", 1000);
+	function onResumed(event, res) {
+		if (res.halt && res.location) {
+			var editor = _editorForLocation(res.location);
+			if (! editor) { return; }
+			editor._codeMirror.setLineClass(res.location.lineNumber);
+		}
 	}
 
 	function onCurrentDocumentChange() {
@@ -306,7 +310,6 @@ define(function (require, exports, module) {
 		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
 		$Debugger.on("paused", onPaused);
 		$Debugger.on("resumed", onResumed);
-		$Debugger.on("trace", onTrace);
 
 		// register for code mirror click events
 		$(".CodeMirror-gutter").on("click", "pre", onLineNumberClick);
