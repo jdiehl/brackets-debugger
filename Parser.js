@@ -31,6 +31,7 @@ define(function (require, exports, module) {
 		FileUtils        = brackets.getModule("file/FileUtils");
 
 	var $script;
+	var caches = {};
 
 	/** Event Handlers *******************************************************/
 
@@ -40,87 +41,50 @@ define(function (require, exports, module) {
 		return esprima.parse(code, options);
 	}
 
-	function walker() {
-		var callbacks = {};
+	function walk(tree, handlers) {
+		var ignore = {
+			id:       true,
+			type:     true,
+			kind:     true,
+			property: true,
+			loc:      true,
+			range:    true
+		};
 		
-		var api = {};
+		var queue = [tree];
+		var current, type, abstractType, key, value, i;
 
-		api.on = function (type, callback) {
-			var types = type.split(/\s+/);
-
-			for (var i = 0; i < types.length; i++) {
-				type = types[i];
-				if (! callbacks[type]) {
-					callbacks[type] = [];
-				}
-				callbacks[type].push(callback);
-			}
+		while (queue.length) {
+			current = queue.shift();
+			type    = current.type;
 			
-			return api;
-		};
-
-		api.walk = function (tree) {
-			var ignore = {
-				id:       true,
-				type:     true,
-				kind:     true,
-				property: true,
-				loc:      true,
-				range:    true
-			};
-			
-			var queue = [tree];
-			var current, type, abstractType, key, value, i;
-
-			while (queue.length) {
-				current = queue.shift();
-				type    = current.type;
-				
-				if (type && callbacks[type]) {
-					for (i = 0; i < callbacks[type].length; i++) {
-						callbacks[type][i](current);
-					}
-				}
-
-				for (key in current) {
-					if (ignore[key] || ! current.hasOwnProperty(key)) { continue; }
-					value = current[key];
-					if ($.isArray(value)) {
-						queue = queue.concat(value);
-					}
-					else if (typeof value === 'object' && value !== null) {
-						queue.push(value);
-					}
-				}
+			if (type && handlers[type]) {
+				handlers[type](current);
 			}
 
-			return api;
-		};
+			for (key in current) {
+				if (ignore[key] || ! current.hasOwnProperty(key)) { continue; }
+				value = current[key];
+				if ($.isArray(value)) {
+					queue = queue.concat(value);
+				}
+				else if (typeof value === 'object' && value !== null) {
+					queue.push(value);
+				}
+			}
+		}
+	}
 
-		return api;
+	function getCacheForUrl(url) {
+		if (! caches[url]) {
+			caches[url] = {};
+		}
+		return caches[url];
 	}
 
 	/** Private Functions *******************************************************/
 
 	/** Helper Functions *******************************************************/
-
-	/** If url is local, calls callback with the raw text and returns true, returns false otherwise*/
-	function _readLocalUrl(url, callback) {
-		if (url.slice(0, 7) !== 'file://') {
-			return false;
-		}
-		
-		var path = url.slice(7);
-		console.log("Reading " + path);
-		var fileEntry = new NativeFileSystem.FileEntry(path);
-		FileUtils.readAsText(fileEntry).done(callback);
-		
-		return true;
-	}
-
-	function loadLibs() {
-		loadEsprima();
-	}
 
 	function loadEsprima() {
 		if (typeof esprima === 'undefined') {
@@ -135,11 +99,13 @@ define(function (require, exports, module) {
 	
 	// init
 	function init() {
-		loadLibs();
+		loadEsprima();
 	}
 
 	function unload() {
-		$script.remove();
+		if ($script) {
+			$script.remove();
+		}
 	}
 
 	// public methods
@@ -147,5 +113,6 @@ define(function (require, exports, module) {
 	exports.unload = unload;
 
 	exports.parse = parse;
-	exports.walker = walker;
+	exports.walk = walk;
+	exports.getCacheForUrl = getCacheForUrl;
 });

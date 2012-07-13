@@ -35,12 +35,11 @@ define(function (require, exports, module) {
 	var Debugger   = require("Debugger");
 	var Breakpoint = require("Breakpoint");
 	var Parser     = require("Parser");
+	var Hover      = require("Hover");
 
 	var $style;
 	var traceLineTimeouts = {};
 	var tracepointsForUrl = {};
-	var functionsForUrl   = {};
-	var variablesForUrl   = {};
 
 	/** Helper Functions *****************************************************/
 
@@ -148,176 +147,38 @@ define(function (require, exports, module) {
 		removeFunctionTracepoints(doc.url);
 
 		// Loc: store locations as node.loc.(start|end).(line|column)
-		var tree      = Parser.parse(doc.getText(), { loc: true });
-		var functions = functionsForUrl[doc.url] = [];
-		var variables = variablesForUrl[doc.url] = {};
+		var tree  = Parser.parse(doc.getText(), { loc: true });
+		var cache = Parser.getCacheForUrl(doc.url);
 		
-		Parser
-			.walker()
-			.on('FunctionDeclaration FunctionExpression', function (node) {
-				functions.push(node);
-				addFunctionTracepoints(doc.url, node);
-			})
-			.on('Identifier VariableDeclarator', function (node) {
-				if (node.type === 'VariableDeclarator') {
-					node = node.id;
-				}
+		cache.functions = [];
+		var onFunction = function (node) {
+			cache.functions.push(node);
+			addFunctionTracepoints(doc.url, node);
+		};
 
-				var line = node.loc.start.line;
-				var column = node.loc.start.column;
+		cache.variables = {};
+		var onVariable = function (node) {
+			if (node.type === 'VariableDeclarator') { node = node.id; }
+			
+			var line   = node.loc.start.line;
+			var column = node.loc.start.column;
+			
+			if (! cache.variables[line]) { cache.variables[line] = {}; }
+			cache.variables[line][column] = node.name;
+		};
 
-				if (! variables[line]) {
-					variables[line] = {};
-				}
-				variables[line][column] = node.name;
-			})
-			.walk(tree);
-	}
-
-	function resolveVariable(tracepoint, variable) {
-		var noGlobal = function (scope) { return scope.type !== "global"; };
-
-		var result = $.Deferred();
-
-		var trace = tracepoint.trace[tracepoint.trace.length - 1];
-		if (! trace || trace.callFrames.length === 0) { return result.reject(); }
-		var callFrameIndex = 0;
-		trace.resolveCallFrame(callFrameIndex, noGlobal).done(function () {
-			var callFrame = trace.callFrames[callFrameIndex];
-			var found = false;
-			for (var i = 0; i < callFrame.scopeChain.length; i++) {
-				var vars = callFrame.scopeChain[i].resolved;
-				if (vars && vars[variable]) {
-					return result.resolve(vars[variable]);
-				}
-			}
-			result.reject();
-		});
-
-		return result.promise();
-	}
-
-	function describeValue(value) {
-		if (value.type === "undefined") { return "undefined"; }
-		if (value.type === "number")    { return value.value; }
-		if (value.type === "string")    { return JSON.stringify(value.value); }
-		if (value.type === "function")  { return value.description; }
-		if (value.value === null)       { return "null"; }
-		if (value.description)          { return value.description; }
+		var handlers = {
+			FunctionDeclaration: onFunction,
+			FunctionExpression:  onFunction,
+			Identifier:          onVariable,
+			VariableDeclarator:  onVariable
+		};
 		
-		return JSON.stringify(value);
-	}
-
-	function showValue(value, line, fromCol, toCol, cmLinesNode, cm) {
-		var left   = cm.charCoords({ line: line, ch: fromCol }, "local");
-		var right  = cm.charCoords({ line: line, ch: toCol   }, "local");
-		var middle = left.x + Math.round((right.x - left.x) / 2);
-		var $popup = $("<div>").attr("id", "jdiehl-debugger-variable-value").text(value).appendTo($("> div:last", cmLinesNode));
-		$popup.css({ left: Math.round(middle - $popup.outerWidth() / 2), top: left.y });
-
-		return $popup;
-	}
-
-	function findWrappingFunction(functions, cursor, token) {
-		var fn;
-		
-		for (var i = 0; i < functions.length; i++) {
-			var candidate    = functions[i];
-			var start        = candidate.loc.start, end = candidate.loc.end;
-			var startsBefore = start.line - 1 < cursor.line || (start.line - 1 === cursor.line && start.column < token.start);
-			var endsAfter    = end.line - 1 > cursor.line || (end.line - 1 === cursor.line && end.column > token.end);
-
-			// Assumption: any later function that surrounds the variable
-			// is inside any previous surrounding function => just replace fn
-			if (startsBefore && endsAfter) { fn = candidate; }
-		}
-
-		return fn;
+		Parser.walk(tree, handlers);
 	}
 
 	/** Event Handlers *******************************************************/
 	
-	function onLinesMouseMove(event) {
-		onPixelHover({ x: event.clientX, y: event.clientY }, event.target);
-	}
-	
-	function onLinesMouseOut() {
-		onPixelHover(null);
-	}
-
-	var hover = { cursor: null, token: null };
-
-	function onPixelHover(pixel, node) {
-		var cm     = EditorManager.getCurrentFullEditor()._codeMirror;
-
-		var cursor = pixel ? cm.coordsChar({ x: pixel.x + 4, y: pixel.y }) : null;
-
-		// Same cursor position hovered as before: abort
-		if (hover.cursor &&
-			cursor &&
-			cursor.ch   === hover.cursor.ch &&
-			cursor.line === hover.cursor.line
-		) { return; }
-		
-		hover.cursor = cursor;
-		onCursorHover(cursor, node, cm);
-	}
-
-	function onCursorHover(cursor, cmLinesNode, cm) {
-		var token = cursor ? cm.getTokenAt(cursor) : null;
-
-		// Same token hovered as before: abort
-		if (hover.token &&
-			token &&
-			token.string    === hover.token.string &&
-			token.className === hover.token.className &&
-			token.start     === hover.token.start &&
-			token.end       === hover.token.end
-		) { return; }
-
-		hover.token = token;
-		onTokenHover(token, cursor, cmLinesNode, cm);
-	}
-
-	var $popup;
-	
-	function onTokenHover(token, cursor, cmLinesNode, cm) {
-		// Close the popup
-		if ($popup) { $popup.remove(); }
-
-		// No token hovered? We're done
-		if (! token) { return; }
-
-		// Get the functions and variables of the current document or abort
-		var url       = DocumentManager.getCurrentDocument().url;
-		var variables = variablesForUrl[url];
-		var functions = functionsForUrl[url];
-		if (! variables || ! functions) { return; }
-
-		// Find the variable for this token, else abort
-		// CodeMirror lines are 0-based, Esprima lines are 1-based
-		var line     = cursor.line + 1;
-		var column   = token.start;
-		var variable = variables[line] ? variables[line][column] : null;
-		if (! variable) { return; }
-
-		// Find the function surrounding the variable, else abort
-		var fn = findWrappingFunction(functions, cursor, token);
-		if (! fn) { return; }
-
-		var resolveBefore = resolveVariable(fn.tracepoints[0], variable);
-		var resolveAfter  = resolveVariable(fn.tracepoints[1], variable);
-		$.when(resolveBefore, resolveAfter).done(function (before, after) {
-			before = describeValue(before);
-			after  = describeValue(after);
-			console.log("Done", before, after);
-			if (before !== after) {
-				before += " ↦ " + after;
-			}
-			$popup = showValue(before, cursor.line, token.start, token.end, cmLinesNode, cm);
-		});
-	}
-
 	function onLineNumberClick(event) {
 		var $elem = $(event.currentTarget);
 		var doc = DocumentManager.getCurrentDocument();
@@ -381,6 +242,7 @@ define(function (require, exports, module) {
 		Console.init();
 		Breakpoint.init();
 		Parser.init();
+		Hover.init();
 
 		// register for debugger events
 		var $Debugger = $(Debugger);
@@ -392,10 +254,6 @@ define(function (require, exports, module) {
 		// register for code mirror click events
 		$(".CodeMirror-gutter").on("click", "pre", onLineNumberClick);
 		
-		$(".CodeMirror-lines")
-			.on("mousemove", onLinesMouseMove)
-			.on("mouseout", onLinesMouseOut);
-
 		$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
 		$btnBreakEvents.click(onToggleBreakEvents);
 		$btnBreakEvents.insertBefore('#main-toolbar .buttons #toolbar-go-live');
@@ -407,17 +265,14 @@ define(function (require, exports, module) {
 	// unload
 	function unload() {
 		$(DocumentManager).off("currentDocumentChange", onCurrentDocumentChange);
-		
+
+		Hover.unload();
+		Parser.unload();
+		Breakpoint.unload();
 		Console.unload();
 		Debugger.unload();
-		Breakpoint.unload();
-		Parser.unload();
 		$style.remove();
 		$(".CodeMirror-gutter").off("click", "pre", onLineNumberClick);
-		
-		$(".CodeMirror-lines")
-			.off("mousemove", onLinesMouseMove)
-			.off("mouseout", onLinesMouseOut);
 	}
 
 	exports.init = init;
