@@ -39,8 +39,7 @@ define(function (require, exports, module) {
 	var $style;
 	var traceLineTimeouts = {};
 	var tracepointsForUrl = {};
-	var previousHoverPos;
-	var previousHoverToken;
+	var functionsForUrl   = {};
 
 	/** Helper Functions *****************************************************/
 	
@@ -158,72 +157,81 @@ define(function (require, exports, module) {
 	function parseDocument(doc) {
 		if (! doc || doc.extension !== 'js') { return; }
 
-		console.groupCollapsed("Parsing", doc.file.name);
-
 		removeFunctionTracepoints(doc.url);
 
-		// Loc: also store locations (line, column)
-		// Range: index-based ranges
+		// Loc:   store locations (line, column)
+		// Range: store index-based ranges
 		var options = { loc: true, range: true };
 		var code    = doc.getText();
 		var tree    = Parser.parse(code, options);
 
-		// var functions = _functionsForUrl[doc.url] = [];
-		
+		var functions = functionsForUrl[doc.url] = [];
 		Parser.findFunctions(tree, function (node) {
-			// functions.push(node);
-			// Name, if given
-			var name  = node.id ? node.id.name : "<anonymous>";
-			// Location as objects with .line and .column
-			var start = node.loc.start, end = node.loc.end;
-			// Location as indexes
-			var from  = node.range[0], to = node.range[1];
-			
-			console.log("Found function " + name + "() in lines " + start.line + "-" + end.line, node);
-			
-			var excerpt;
-			if (to - from > 100) {
-				excerpt = code.slice(from, from + 49) + '...' + code.slice(to - 49, to);
-			} else {
-				excerpt = code.slice(from, to);
-			}
-			console.log(excerpt);
-			
+			functions.push(node);
 			setFunctionTracepoints(doc.url, node);
 		});
-
-		console.groupEnd();
 	}
 
 	/** Event Handlers *******************************************************/
 	
-	function onLinesMouseOut(event) {
-		previousHoverPos   = null;
-		previousHoverToken = null;
-	}
-
 	function onLinesMouseMove(event) {
-		var cm  = EditorManager.getCurrentFullEditor()._codeMirror;
-		var pos = cm.coordsChar({ x: event.clientX, y: event.clientY });
-
-		if (! previousHoverPos || pos.line !== previousHoverPos.line || pos.ch !== previousHoverPos.ch) {
-			previousHoverPos = pos;
-			onCharacterHover(event, pos, cm);
-		}
+		onPixelEnter({ x: event.clientX, y: event.clientY }, event.target);
+	}
+	
+	function onLinesMouseOut() {
+		onPixelEnter(null);
 	}
 
-	function onCharacterHover(event, pos, cm) {
-		var token = cm.getTokenAt(pos);
-		var p = previousHoverToken;
+	var hover = { cursor: null, token: null };
+
+	function onPixelEnter(pixel, node) {
+		var cm     = EditorManager.getCurrentFullEditor()._codeMirror;
+
+		var cursor = pixel ? cm.coordsChar(pixel) : null;
+
+		// Same cursor position hovered as before: abort
+		if (hover.cursor &&
+			cursor &&
+			cursor.ch   === hover.cursor.ch &&
+			cursor.line === hover.cursor.line
+		) { return; }
 		
-		if (! p || token.string !== p.string || token.className !== p.className || token.string !== p.string) {
-			previousHoverToken = token;
-			onTokenHover(event, token, pos, cm);
-		}
+		hover.cursor = cursor;
+		onCursorEnter(cursor, node, cm);
 	}
 
-	function onTokenHover(event, token, pos, cm) {
-		//console.log(JSON.stringify(pos), token.string, token.className);
+	function onCursorEnter(cursor, node, cm) {
+		var token = cursor ? cm.getTokenAt(cursor) : null;
+
+		// Same token hovered as before: abort
+		if (hover.token &&
+			token &&
+			token.string    === hover.token.string &&
+			token.className === hover.token.className &&
+			token.start     === hover.token.start &&
+			token.end       === hover.token.end
+		) { return; }
+
+		hover.token = token;
+		onTokenEnter(token, cursor, node, cm);
+	}
+
+	var $popup;
+	
+	function onTokenEnter(token, cursor, node, cm) {
+		if ($popup) {
+			$popup.remove();
+		}
+		
+		if (token && token.className === 'variable') {
+			var pixel = cm.charCoords({ line: cursor.line, ch: token.start }, 'local');
+			console.log("Line", cursor.line, "Column", cursor.ch, "X", pixel.x, "Y", pixel.y, "String", token.string);
+			console.log(pixel);
+			$popup = $('<div>')
+				.text(token.string)
+				.css({ left: pixel.x, top: pixel.y, background: 'red', position: 'absolute' });
+			$(node).find('> div > div:last').append($popup);
+		}
 	}
 
 	function onLineNumberClick(event) {
