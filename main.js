@@ -40,6 +40,7 @@ define(function (require, exports, module) {
 	var traceLineTimeouts = {};
 	var tracepointsForUrl = {};
 	var functionsForUrl   = {};
+	var variablesForUrl   = {};
 
 	/** Helper Functions *****************************************************/
 
@@ -100,9 +101,8 @@ define(function (require, exports, module) {
 		}, delay);
 	}
 
-	function setFunctionTracepoints(url, node) {
-		// Remember the tracepoints
-		var tracepoints = tracepointsForUrl[url] = [];
+	function addFunctionTracepoints(url, node) {
+		var tracepoints = [];
 
 		// Name of the function
 		var name  = node.id ? node.id.name : "<anonymous>";
@@ -123,6 +123,13 @@ define(function (require, exports, module) {
 				console.log("Tracepoint set for " + name + "() in", url.replace(/^.*\//, ''), "line", res.breakpoint.location.lineNumber);
 			});
 		}
+		
+		// Remember the tracepoints
+		node.tracepoints = tracepoints;
+		if (! tracepointsForUrl[url]) {
+			tracepointsForUrl[url] = [];
+		}
+		tracepointsForUrl[url] = tracepointsForUrl[url].concat(tracepoints);
 	}
 
 	function removeFunctionTracepoints(url) {
@@ -140,35 +147,104 @@ define(function (require, exports, module) {
 
 		removeFunctionTracepoints(doc.url);
 
-		// Loc:   store locations (line, column)
-		// Range: store index-based ranges
-		var options = { loc: true, range: true };
-		var code    = doc.getText();
-		var tree    = Parser.parse(code, options);
-
+		// Loc: store locations as node.loc.(start|end).(line|column)
+		var tree      = Parser.parse(doc.getText(), { loc: true });
 		var functions = functionsForUrl[doc.url] = [];
-		Parser.findFunctions(tree, function (node) {
-			functions.push(node);
-			setFunctionTracepoints(doc.url, node);
+		var variables = variablesForUrl[doc.url] = {};
+		
+		Parser
+			.walker()
+			.on('FunctionDeclaration FunctionExpression', function (node) {
+				functions.push(node);
+				addFunctionTracepoints(doc.url, node);
+			})
+			.on('Identifier VariableDeclarator', function (node) {
+				if (node.type === 'VariableDeclarator') {
+					node = node.id;
+				}
+
+				var line = node.loc.start.line;
+				var column = node.loc.start.column;
+
+				if (! variables[line]) {
+					variables[line] = {};
+				}
+				variables[line][column] = node.name;
+			})
+			.walk(tree);
+	}
+
+	function resolveScopes(tracepoint, callback) {
+		var noGlobal = function (scope) { return scope.type !== "global"; };
+
+		var trace = tracepoint.trace[tracepoint.trace.length - 1];
+		if (! trace || trace.callFrames.length === 0) { return; }
+		var callFrameIndex = 0;
+		trace.resolveCallFrame(callFrameIndex, noGlobal).done(function () {
+			var callFrame = trace.callFrames[callFrameIndex];
+			var scopes = [];
+			for (var i = 0; i < callFrame.scopeChain.length; i++) {
+				var vars = callFrame.scopeChain[i].resolved;
+				if (vars) {
+					scopes.push(vars);
+				}
+			}
+			callback(scopes);
 		});
+	}
+
+	function showVariableValue(value, line, fromCol, toCol, cmLinesNode, cm) {
+		var string;
+		if      (value.type === "undefined") { string = "undefined"; }
+		else if (value.type === "number")    { string = value.value; }
+		else if (value.type === "string")    { string = JSON.stringify(value.value); }
+		else if (value.type === "function")  { string = value.description; }
+		else if (value.value === null)       { string = "null"; }
+		else if (value.description)          { string = value.description; }
+		else                                 { string = JSON.stringify(value); }
+
+		var left   = cm.charCoords({ line: line, ch: fromCol }, "local");
+		var right  = cm.charCoords({ line: line, ch: toCol   }, "local");
+		var middle = left.x + Math.round((right.x - left.x) / 2);
+		var $popup = $("<div>").attr("id", "jdiehl-debugger-variable-value").text(string).appendTo($("> div:last", cmLinesNode));
+		$popup.css({ left: Math.round(middle - $popup.outerWidth() / 2), top: left.y });
+
+		return $popup;
+	}
+
+	function findWrappingFunction(functions, cursor, token) {
+		var fn;
+		
+		for (var i = 0; i < functions.length; i++) {
+			var candidate    = functions[i];
+			var start        = candidate.loc.start, end = candidate.loc.end;
+			var startsBefore = start.line - 1 < cursor.line || (start.line - 1 === cursor.line && start.column < token.start);
+			var endsAfter    = end.line - 1 > cursor.line || (end.line - 1 === cursor.line && end.column > token.end);
+
+			// Assumption: any later function that surrounds the variable
+			// is inside any previous surrounding function => just replace fn
+			if (startsBefore && endsAfter) { fn = candidate; }
+		}
+
+		return fn;
 	}
 
 	/** Event Handlers *******************************************************/
 	
 	function onLinesMouseMove(event) {
-		onPixelEnter({ x: event.clientX, y: event.clientY }, event.target);
+		onPixelHover({ x: event.clientX, y: event.clientY }, event.target);
 	}
 	
 	function onLinesMouseOut() {
-		onPixelEnter(null);
+		onPixelHover(null);
 	}
 
 	var hover = { cursor: null, token: null };
 
-	function onPixelEnter(pixel, node) {
+	function onPixelHover(pixel, node) {
 		var cm     = EditorManager.getCurrentFullEditor()._codeMirror;
 
-		var cursor = pixel ? cm.coordsChar(pixel) : null;
+		var cursor = pixel ? cm.coordsChar({ x: pixel.x + 4, y: pixel.y }) : null;
 
 		// Same cursor position hovered as before: abort
 		if (hover.cursor &&
@@ -178,10 +254,10 @@ define(function (require, exports, module) {
 		) { return; }
 		
 		hover.cursor = cursor;
-		onCursorEnter(cursor, node, cm);
+		onCursorHover(cursor, node, cm);
 	}
 
-	function onCursorEnter(cursor, node, cm) {
+	function onCursorHover(cursor, cmLinesNode, cm) {
 		var token = cursor ? cm.getTokenAt(cursor) : null;
 
 		// Same token hovered as before: abort
@@ -194,51 +270,43 @@ define(function (require, exports, module) {
 		) { return; }
 
 		hover.token = token;
-		onTokenEnter(token, cursor, node, cm);
+		onTokenHover(token, cursor, cmLinesNode, cm);
 	}
 
 	var $popup;
 	
-	function onTokenEnter(token, cursor, node, cm) {
-		if ($popup) {
-			$popup.remove();
-		}
-		
-		if (token && token.className === 'variable') {
-			var url = DocumentManager.getCurrentDocument().url;
-			var fns = functionsForUrl[url];
-			if (! fns) { return; }
+	function onTokenHover(token, cursor, cmLinesNode, cm) {
+		// Close the popup
+		if ($popup) { $popup.remove(); }
 
-			console.log("Token", token.start, token.end, "Cursor", cursor.line);
+		// No token hovered? We're done
+		if (! token) { return; }
 
-			var closest = null;
-			for (var i = 0; i < fns.length; i++) {
-				var fn = fns[i];
-				console.log("Candidate", fn.loc.start.line + " - " + fn.loc.end.line, fn.id ? fn.id.name : "anonymous");
-				var start = fn.loc.start, end = fn.loc.end;
+		// Get the functions and variables of the current document or abort
+		var url       = DocumentManager.getCurrentDocument().url;
+		var variables = variablesForUrl[url];
+		var functions = functionsForUrl[url];
+		if (! variables || ! functions) { return; }
 
-				var startsBefore = start.line - 1 < cursor.line || (start.line - 1 === cursor.line && start.column < token.start);
-				var endsAfter = end.line - 1 > cursor.line || (end.line - 1 === cursor.line && end.column > token.end);
+		// Find the variable for this token, else abort
+		// CodeMirror lines are 0-based, Esprima lines are 1-based
+		var line     = cursor.line + 1;
+		var column   = token.start;
+		var variable = variables[line] ? variables[line][column] : null;
+		if (! variable) { return; }
 
-				console.log(startsBefore, endsAfter, start.line - 1 === cursor.line, start.line, cursor.line, start.column, token.start);
+		// Find the function surrounding the variable, else abort
+		var fn = findWrappingFunction(functions, cursor, token);
+		if (! fn) { return; }
 
-				// Assumption is that any later function that surrounds the variable
-				// is inside any previous surrounding function => just replace closest
-				if (startsBefore && endsAfter) {
-					closest = fn;
-				}
+		// Resolve the scopes and find the variable in them
+		resolveScopes(fn.tracepoints[1], function (scopes) {
+			for (var i = 0; i < scopes.length; i++) {
+				if (! scopes[i][variable]) { continue; }
+				$popup = showVariableValue(scopes[i][variable], cursor.line, token.start, token.end, cmLinesNode, cm);
+				break;
 			}
-			
-			if (! closest) { return; }
-			
-			var pixel = cm.charCoords({ line: cursor.line, ch: token.start }, 'local');
-			console.log("Line", cursor.line, "Column", cursor.ch, "X", pixel.x, "Y", pixel.y, "String", token.string);
-			console.log(closest.loc.start.line + " - " + closest.loc.end.line, closest.id ? closest.id.name : "anonymous");
-			$popup = $('<div>')
-				.text(token.string)
-				.css({ left: pixel.x, top: pixel.y, background: 'red', position: 'absolute' });
-			$(node).find('> div > div:last').append($popup);
-		}
+		});
 	}
 
 	function onLineNumberClick(event) {

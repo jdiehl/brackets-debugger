@@ -40,37 +40,64 @@ define(function (require, exports, module) {
 		return esprima.parse(code, options);
 	}
 
-	function findFunctions(tree, callback) {
-		var ignore = {
-			id:    true,
-			type:  true,
-			kind:  true,
-			loc:   true,
-			range: true
-		};
+	function walker() {
+		var callbacks = {};
 		
-		var queue = [tree];
-		var current, type, key, value;
+		var api = {};
 
-		while (queue.length) {
-			current = queue.shift();
-			type    = current.type;
+		api.on = function (type, callback) {
+			var types = type.split(/\s+/);
+
+			for (var i = 0; i < types.length; i++) {
+				type = types[i];
+				if (! callbacks[type]) {
+					callbacks[type] = [];
+				}
+				callbacks[type].push(callback);
+			}
 			
-			if (type === 'FunctionDeclaration' || type === 'FunctionExpression') {
-				callback(current);
+			return api;
+		};
+
+		api.walk = function (tree) {
+			var ignore = {
+				id:       true,
+				type:     true,
+				kind:     true,
+				property: true,
+				loc:      true,
+				range:    true
+			};
+			
+			var queue = [tree];
+			var current, type, abstractType, key, value, i;
+
+			while (queue.length) {
+				current = queue.shift();
+				type    = current.type;
+				
+				if (type && callbacks[type]) {
+					for (i = 0; i < callbacks[type].length; i++) {
+						callbacks[type][i](current);
+					}
+				}
+
+				for (key in current) {
+					if (ignore[key] || ! current.hasOwnProperty(key)) { continue; }
+					value = current[key];
+					if ($.isArray(value)) {
+						queue = queue.concat(value);
+					}
+					else if (typeof value === 'object' && value !== null) {
+						queue.push(value);
+					}
+				}
 			}
 
-			for (key in current) {
-				if (ignore[key] || ! current.hasOwnProperty(key)) { continue; }
-				value = current[key];
-				if ($.isArray(value)) {
-					queue = queue.concat(value);
-				}
-				else if (typeof value === 'object' && value !== null) {
-					queue.push(value);
-				}
-			}
-		}
+			return api;
+		};
+
+		return api;
 	}
 
 	/** Private Functions *******************************************************/
@@ -120,5 +147,5 @@ define(function (require, exports, module) {
 	exports.unload = unload;
 
 	exports.parse = parse;
-	exports.findFunctions = findFunctions;
+	exports.walker = walker;
 });
