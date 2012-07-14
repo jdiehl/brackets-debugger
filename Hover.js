@@ -29,23 +29,52 @@ define(function (require, exports, module) {
 
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager   = brackets.getModule("editor/EditorManager");
+	var Inspector       = brackets.getModule("LiveDevelopment/Inspector/Inspector");
 
 	var Parser = require("Parser");
 
 	var hover = { cursor: null, token: null };
 	var $popup;
+	var tabWidth = 2;
 	
 	/** Helper Functions *****************************************************/
 	
-	function describeValue(value) {
+	function describeValue(value, level) {
+		level = level || 0;
+
+		if (value.value === null)       { return "null"; }
 		if (value.type === "undefined") { return "undefined"; }
 		if (value.type === "number")    { return value.value; }
 		if (value.type === "string")    { return JSON.stringify(value.value); }
 		if (value.type === "function")  { return value.description; }
-		if (value.value === null)       { return "null"; }
+		if (value.type === "object")    { return describeObject(value, level); }
 		if (value.description)          { return value.description; }
 		
-		return JSON.stringify(value);
+		// Pretty print
+		return JSON.stringify(value, undefined, tabWidth);
+	}
+
+	function describeObject(info, level) {
+		if (! info.value) { return info.description; }
+
+		var i, indentUnit = "", indent = "";
+		for (i = 0; i < tabWidth; i++) { indentUnit += " "; }
+		for (i = 0; i < level;    i++) { indent     += indentUnit; }
+
+		var content = [];
+		for (var key in info.value) {
+			var line = indent + indentUnit;
+			// Object key
+			if (info.subtype !== 'array') { line += key + ": "; }
+			line += describeValue(info.value[key], level + 1);
+			content.push(line);
+		}
+		content = content.join(",\n");
+		
+		var b = info.subtype === 'array' ? ["[", "]"] : ["{", "}"];
+		content = b[0] + (content.length > 1 ? "\n" + content + "\n" + indent : content) + b[1];
+		
+		return content;
 	}
 
 	function removePopup() {
@@ -88,10 +117,10 @@ define(function (require, exports, module) {
 		return $popup;
 	}
 	
-	function resolveVariable(tracepoint, variable) {
+	function resolveVariableInTracepoint(variable, tracepoint) {
 		var noGlobal = function (scope) { return scope.type !== "global"; };
 
-		var result = $.Deferred();
+		var result = new $.Deferred();
 
 		var trace = tracepoint.trace[tracepoint.trace.length - 1];
 		if (! trace || trace.callFrames.length === 0) { return result.reject(); }
@@ -101,11 +130,45 @@ define(function (require, exports, module) {
 			for (var i = 0; i < scopeChain.length; i++) {
 				var vars = scopeChain[i].resolved;
 				if (vars && vars[variable]) {
-					return result.resolve(vars[variable]);
+					return resolveVariable(vars[variable]).done(result.resolve);
 				}
 			}
 			result.reject();
 		});
+
+		return result.promise();
+	}
+
+	function resolveVariable(value, cache) {
+		if (! cache) { cache = {}; }
+		
+		var result = new $.Deferred();
+		
+		if (! value.objectId) {
+			result.resolve(value);
+		}
+		else if (cache[value.objectId]) {
+			result.resolve(cache[value.objectId]);
+		}
+		else {
+			cache[value.objectId] = value;
+			Inspector.Runtime.getProperties(value.objectId, true, function (res) {
+				console.log(res);
+
+				var pending = [];
+				var resolved = value.value = {};
+				for (var i in res.result) {
+					var info = res.result[i];
+					if (! info.enumerable) { continue; }
+					resolved[info.name] = info.value;
+					pending.push(resolveVariable(info.value));
+				}
+
+				$.when.apply(null, pending).done(function () {
+					result.resolve(value);
+				});
+			});
+		}
 
 		return result.promise();
 	}
@@ -194,8 +257,8 @@ define(function (require, exports, module) {
 		var fn = findWrappingFunction(functions, cursor, token);
 		if (! fn) { return; }
 
-		var resolveBefore = resolveVariable(fn.tracepoints[0], variable);
-		var resolveAfter  = resolveVariable(fn.tracepoints[1], variable);
+		var resolveBefore = resolveVariableInTracepoint(variable, fn.tracepoints[0]);
+		var resolveAfter  = resolveVariableInTracepoint(variable, fn.tracepoints[1]);
 		$.when(resolveBefore, resolveAfter).done(function (before, after) {
 			before = describeValue(before);
 			after  = describeValue(after);
