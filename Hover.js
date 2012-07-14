@@ -56,6 +56,8 @@ define(function (require, exports, module) {
 	}
 
 	function showValue(value, line, fromCol, toCol, cmLinesNode, cm) {
+		removePopup();
+		
 		// Create the popup with an ID for CSS
 		var $popup = $("<div>").attr("id", "jdiehl-debugger-variable-value");
 		// Make the text movable independent of the rest (the arrow) by wrapping it in another div
@@ -197,7 +199,6 @@ define(function (require, exports, module) {
 		$.when(resolveBefore, resolveAfter).done(function (before, after) {
 			before = describeValue(before);
 			after  = describeValue(after);
-			console.log("Done", before, after);
 			if (before !== after) {
 				before += " ↦ " + after;
 			}

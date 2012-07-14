@@ -31,6 +31,7 @@ define(function (require, exports, module) {
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
+	// var Context    = require("Context");
 	var Console    = require("Console");
 	var Debugger   = require("Debugger");
 	var Breakpoint = require("Breakpoint");
@@ -180,9 +181,11 @@ define(function (require, exports, module) {
 	/** Event Handlers *******************************************************/
 	
 	function onLineNumberClick(event) {
-		var $elem = $(event.currentTarget);
-		var doc = DocumentManager.getCurrentDocument();
-		var location = { url: doc.url, lineNumber: $elem.index() };
+		// Todo: find the editor that was actually clicked
+		var editor = EditorManager.getCurrentFullEditor();
+		var pos    = editor._codeMirror.coordsChar({ x: event.clientX, y: event.clientY });
+		
+		var location = { url: editor.document.url, lineNumber: pos.line };
 		Debugger.toggleBreakpoint(location);
 	}
 
@@ -238,6 +241,7 @@ define(function (require, exports, module) {
 		_loadLessFile("debugger.less", _extensionDirForBrowser());
 
 		// init modules
+		// Context.init();
 		Debugger.init();
 		Console.init();
 		Breakpoint.init();
@@ -252,7 +256,10 @@ define(function (require, exports, module) {
 		$Debugger.on("resumed", onResumed);
 
 		// register for code mirror click events
-		$(".CodeMirror-gutter").on("click", "pre", onLineNumberClick);
+		// Todo: use CodeMirror's onGutterClick
+		// Then we would know which editor was clicked (inline or full)
+		// Right now this would be buggy, though: https://github.com/adobe/brackets/issues/1251
+		$("body").on("click", ".CodeMirror-gutter pre", onLineNumberClick);
 		
 		$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
 		$btnBreakEvents.click(onToggleBreakEvents);
@@ -271,8 +278,9 @@ define(function (require, exports, module) {
 		Breakpoint.unload();
 		Console.unload();
 		Debugger.unload();
+		// Context.unload();
 		$style.remove();
-		$(".CodeMirror-gutter").off("click", "pre", onLineNumberClick);
+		$("body").off("click", ".CodeMirror-gutter pre", onLineNumberClick);
 	}
 
 	exports.init = init;
