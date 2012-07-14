@@ -153,8 +153,6 @@ define(function (require, exports, module) {
 		else {
 			cache[value.objectId] = value;
 			Inspector.Runtime.getProperties(value.objectId, true, function (res) {
-				console.log(res);
-
 				var pending = [];
 				var resolved = value.value = {};
 				for (var i in res.result) {
