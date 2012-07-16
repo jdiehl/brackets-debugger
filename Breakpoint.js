@@ -135,9 +135,9 @@ define(function (require, exports, module) {
 		},
 
 		// trigger paused
-		triggerPaused: function (callFrames) {
+		triggerPaused: function (callFrames, event) {
 			if (this.traceOnPause) {
-				var trace = new Trace.Trace(callFrames);
+				var trace = new Trace.Trace(callFrames, event);
 				this.trace.push(trace);
 			}
 		}
