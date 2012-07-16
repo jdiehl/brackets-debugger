@@ -53,7 +53,6 @@ define(function (require, exports, module) {
 		this.children = [];
 		this._relateToTrace(_lastTrace);
 		_lastTrace = this;
-		console.log(this);
 	}
 
 	Trace.prototype = {
