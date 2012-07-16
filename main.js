@@ -32,8 +32,10 @@ define(function (require, exports, module) {
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
 	// var Context    = require("Context");
-	var Console    = require("Console");
 	var Debugger   = require("Debugger");
+	var Panel      = require("Panel");
+	var ConsoleTab = require("ConsoleTab");
+	var TraceTab   = require("TraceTab");
 	var Breakpoint = require("Breakpoint");
 	var Parser     = require("Parser");
 	var Hover      = require("Hover");
@@ -243,7 +245,9 @@ define(function (require, exports, module) {
 		// init modules
 		// Context.init();
 		Debugger.init();
-		Console.init();
+		Panel.init();
+		TraceTab.init();
+		ConsoleTab.init();
 		Breakpoint.init();
 		Parser.init();
 		Hover.init();
@@ -276,7 +280,9 @@ define(function (require, exports, module) {
 		Hover.unload();
 		Parser.unload();
 		Breakpoint.unload();
-		Console.unload();
+		TraceTab.unload();
+		ConsoleTab.unload();
+		Panel.unload();
 		Debugger.unload();
 		// Context.unload();
 		$style.remove();
