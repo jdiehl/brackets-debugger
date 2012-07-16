@@ -59,7 +59,7 @@
     }
 }
 
-#console {
+#jdiehl-debugger-panel {
 	.toolbar {
 		button {
 			width: 16px;
@@ -81,9 +81,38 @@
 		button.resume {
 			background-image: url(img/debuggerContinue.png);
 		}
+		// .tabs class is taken by Bootstrap
+		.toolbar-tabs {
+			padding: 0;
+			margin: 0;
+			list-style: none;
+			> li {
+				position: relative;
+				float: left;
+				display: inline-block;
+				padding: 3px 9px;
+				margin-right: 4px;
+				border-radius: 6px;
+				color: #666;
+				background-color: #ccc;
+				&:hover {
+					color: #000;
+					text-decoration: none;
+				}
+				&.active, &.active:hover {
+					color: #fff;
+					background-color: #3B3F41;
+					cursor: default;
+				}
+			}
+		}
 	}
 	.table-container {
 		position: relative;
+		display: none;
+		&.active {
+			display: block;
+		}
 		.output {
 			position: absolute;
 			top: 4px;

@@ -32,8 +32,10 @@ define(function (require, exports, module) {
 
 	var Debugger = require("Debugger");
 
-	var $console, $consoleToolbar, $consoleContainer, $consoleOut, $consolePrompt;
+	var $panel, $panelToolbar;
+	var $consoleContainer, $consoleOut, $consolePrompt;
 	var $btnPause, $btnStep, $btnContinue;
+	var $tabConsole, $tabTraces;
 	var _lastMessage;
 
 	// add a message
@@ -118,6 +120,14 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function _onTabClicked(event) {
+		var $tab = $(event.target).closest('li');
+		var $content = $("#" + $tab.attr('data-id'));
+
+		$tab.addClass('active').siblings().removeClass('active');
+		$content.addClass('active').siblings('.table-container').removeClass('active');
+	}
+
     // WebInspector Event: Console.messageAdded
     function _onMessageAdded(res) {
         // res = {message}
@@ -145,29 +155,31 @@ define(function (require, exports, module) {
 	// init
 	function init() {
 		// configure the console
-		$console = $('<div id="console" class="bottom-panel">');
+		$panel = $('<div id="jdiehl-debugger-panel" class="bottom-panel">');
 
 		// configure the toolbar
-		$consoleToolbar = $('<div class="toolbar simple-toolbar-layout">');
-		$btnPause = $('<button class="pause">').appendTo($consoleToolbar).on("click", Debugger.pause);
-		$btnContinue = $('<button class="resume">').appendTo($consoleToolbar).on("click", Debugger.resume);
-		$btnStep = $('<button class="stepOver">').appendTo($consoleToolbar).on("click", Debugger.stepOver);
-		$btnStep = $('<button class="stepInto">').appendTo($consoleToolbar).on("click", Debugger.stepInto);
-		$btnStep = $('<button class="stepOut">').appendTo($consoleToolbar).on("click", Debugger.stepOut);
-		$consoleToolbar.append('<div class="title">Console</div>');
-		$consoleToolbar.append('<a href="#" class="close">&times;</a>');
-		$console.append($consoleToolbar);
-		
+		$panelToolbar = $('<div class="toolbar simple-toolbar-layout">');
+		$btnPause = $('<button class="pause">').appendTo($panelToolbar).on("click", Debugger.pause);
+		$btnContinue = $('<button class="resume">').appendTo($panelToolbar).on("click", Debugger.resume);
+		$btnStep = $('<button class="stepOver">').appendTo($panelToolbar).on("click", Debugger.stepOver);
+		$btnStep = $('<button class="stepInto">').appendTo($panelToolbar).on("click", Debugger.stepInto);
+		$btnStep = $('<button class="stepOut">').appendTo($panelToolbar).on("click", Debugger.stepOut);
+		var $tabs = $('<ul class="toolbar-tabs">').appendTo($panelToolbar).on('click', 'li', _onTabClicked);
+		$tabConsole = $('<li data-id="jdiehl-debugger-console" class="active">Console</a>').appendTo($tabs);
+		$tabTraces  = $('<li data-id="jdiehl-debugger-traces">Traces</a>').appendTo($tabs);
+		$panelToolbar.append('<a href="#" class="close">&times;</a>');
+		$panel.append($panelToolbar);
+
 		// configure the container
-		$consoleContainer = $('<div class="table-container">');
-		$console.append($consoleContainer);
-		$consoleOut = $('<div class="output">');
-		$consoleContainer.append($consoleOut);
-		$consolePrompt = $('<input class="prompt">').on("keyup", _onPromptKeypress);
-		$consoleContainer.append($consolePrompt);
+		$consoleContainer = $('<div class="table-container active" id="jdiehl-debugger-console">').appendTo($panel);
+		$consoleOut = $('<div class="output">').appendTo($consoleContainer);
+		$consolePrompt = $('<input class="prompt">').on("keyup", _onPromptKeypress).appendTo($consoleContainer);
+
+		var $tracesContainer = $('<div class="table-container" id="jdiehl-debugger-traces">').appendTo($panel);
+		$tracesContainer.text('test123');
 
 		// attach the console to the main view's content
-		$(".main-view .content").append($console);
+		$(".main-view .content").append($panel);
 
 		Inspector.on("connect", _onConnect);
 		Inspector.on("disconnect", _onDisconnect);
@@ -182,13 +194,13 @@ define(function (require, exports, module) {
 		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Console.messageAdded", _onMessageAdded);
 		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
-		$console.remove();
+		$panel.remove();
 		EditorManager.resizeEditor();
 	}
 
 	// toggle the display of the console
 	function toggle(show) {
-		$console.toggle(show);
+		$panel.toggle(show);
 		EditorManager.resizeEditor();
 	}
 
