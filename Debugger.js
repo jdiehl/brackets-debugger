@@ -35,6 +35,7 @@ define(function (require, exports, module) {
 	
 	var $exports = $(exports);
 	var _paused;
+	var _lastEvent;
 	var _breakOnTracepoints = false;
 
 
@@ -105,15 +106,9 @@ define(function (require, exports, module) {
 
 	/** Event Handlers *******************************************************/
 
-	// WebInspector Event: Debugger.paused
-	function _onPaused(res) {
-		// res = {callFrames, reason, data}
-
-		// ignore breaks that are not related to breakpoints (event / DOM)
-		if (res.reason !== "other") return;
-
+	function _onBreakpointPause(callFrames) {
 		// read the location from the top callframe
-		var loc = res.callFrames[0].location;
+		var loc = callFrames[0].location;
 
 		// find the breakpoints at that location
 		var breakpoints = Breakpoint.findResolved(loc);
@@ -122,7 +117,7 @@ define(function (require, exports, module) {
 		var halt = _breakOnTracepoints;
 		for (var i in breakpoints) {
 			var b = breakpoints[i];
-			b.triggerPaused(res.callFrames);
+			b.triggerPaused(callFrames, _lastEvent);
 			if (b.haltOnPause) halt = true;
 		}
 
@@ -132,8 +127,25 @@ define(function (require, exports, module) {
 		}
 
 		// gather some info about this pause and send the "paused" event
-		_paused = { location: loc, callFrames: res.callFrames, breakpoints: breakpoints, halt: halt };
+		_paused = { location: loc, callFrames: callFrames, breakpoints: breakpoints, halt: halt };
 		$exports.triggerHandler("paused", _paused);
+	}
+
+	function _onEventPause(res) {
+		_lastEvent = res;
+		Inspector.Debugger.resume();
+	}
+
+	// WebInspector Event: Debugger.paused
+	function _onPaused(res) {
+		// res = {callFrames, reason, data}
+
+		switch (res.reason) {
+		case "other":
+			return _onBreakpointPause(res.callFrames);
+		case "EventListener":
+			return _onEventPause(res);
+		}
 	}
 
 	// WebInspector Event: Debugger.resumed
@@ -165,6 +177,7 @@ define(function (require, exports, module) {
 	// Inspector Event: we are connected to a live session
 	function _onConnect() {
 		Inspector.Debugger.enable();
+		Inspector.DOMDebugger.setEventListenerBreakpoint("click");
 		// load the script agent if necessary
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.load();
@@ -193,6 +206,7 @@ define(function (require, exports, module) {
 		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Debugger.paused", _onPaused);
 		Inspector.off("Debugger.resumed", _onResumed);
+		Inspector.DOMDebugger.removeEventListenerBreakpoint("click");
 		$exports.off();
 		_onDisconnect();
 	}
