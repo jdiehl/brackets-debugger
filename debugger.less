@@ -91,6 +91,8 @@
 				float: left;
 				display: inline-block;
 				padding: 3px 9px;
+				// Make it so that the toolbar height stays at 30px
+				margin: -2px 0;
 				margin-right: 4px;
 				border-radius: 6px;
 				color: #666;
@@ -145,6 +147,23 @@
 			padding: 0;
 			border: 0;
 			border-top: 1px solid #b8b8b8;
+		}
+	}
+
+	#jdiehl-debugger-traces {
+		.events, .tree {
+			position: absolute;
+			overflow: auto;
+			padding: 5px;
+		}
+		.events {
+			top: 0; bottom: 0;
+			left: 0; width: 200px;
+		}
+		.tree {
+			top: 0; bottom: 0;
+			left: 210px; right: 0;
+			background-color: #3B3F41;
 		}
 	}
 }
