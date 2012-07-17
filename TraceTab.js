@@ -27,7 +27,10 @@
 define(function (require, exports, module) {
 	'use strict';
 
-	var Panel = require("Panel");
+	var ScriptAgent = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+
+	var Debugger = require("Debugger");
+	var Panel    = require("Panel");
 
 	var tabId = "jdiehl-debugger-traces";
 	
@@ -48,6 +51,49 @@ define(function (require, exports, module) {
 		state: "closed",
 		children: []
 	}];
+
+	function onPaused(event, pause) {
+		var breakpoints = pause.breakpoints;
+		for (var i = 0; i < breakpoints.length; i++) {
+			var breakpoint = breakpoints[i];
+			if (! breakpoint.trace) { continue; }
+			var trace = breakpoint.trace[breakpoint.trace.length - 1];
+			// Todo: update tree if one of trace's parents is shown
+		}
+	}
+
+	var eventTraces = [];
+
+	function _twoDigits(number) {
+		return String(100 + number).slice(-2);
+	}
+
+	function _formatTime(time) {
+		return [time.getHours(), time.getMinutes(), time.getSeconds()].map(_twoDigits).join(":");
+	}
+
+	function onEventTrace(e, trace) {
+		console.log("onEventTrace", trace.id, trace);
+		
+		eventTraces.push(trace);
+		
+		var eventType = trace.event.data.eventName.replace(/^listener:/, '');
+		var frame = trace.callFrames[0];
+		var scriptId = frame.location.scriptId;
+		var url = ScriptAgent.scriptWithId(scriptId).url;
+		var file = url.replace(/^.*\//, '');
+		var fn = frame.functionName;
+
+		$('<div>')
+			.append($('<div class="time">').text(_formatTime(trace.date)))
+			.append($('<div class="type">').text(eventType))
+			.append($('<div class="file">').text(file))
+			.append($('<div class="function">').text(fn))
+			.click(function () {
+				console.log(trace);
+			})
+			.appendTo($events);
+	}
 
 	function _treeDataProvider(treeNode, callback) {
 		var prefix;
@@ -76,7 +122,7 @@ define(function (require, exports, module) {
 		.bind(
 			"before.jstree",
 			function (event, data) {
-				console.log("before.jstree");
+				//console.log("before.jstree");
 				return;
 				if (data.func === "toggle_node") {
 					// jstree will automaticaly select parent node when the parent is closed
@@ -245,11 +291,14 @@ define(function (require, exports, module) {
 	function init() {
 		// configure tab content
 		$tab = $('<div class="table-container">').attr('id', tabId);
-		$events = $('<div class="events">').appendTo($tab).html("line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>line<br>");
+		$events = $('<div class="events">').appendTo($tab);
 		$tree = $('<div class="tree">').appendTo($tab).html('<ul><li><a href="#">Root</a><ul><li><a href="#">Child 1</a></li><li><a href="#">Child 2</a></li></ul></li><li><a href="#">Single entry</a></li></ul>');
 		Panel.addTab(tabId, "Traces", $tab);
 
 		setupTree($tree);
+
+		$(Debugger).on("paused", onPaused);
+		$(Debugger).on("eventTrace", onEventTrace);
 	}
 
 	function unload() {

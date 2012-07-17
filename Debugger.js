@@ -37,6 +37,7 @@ define(function (require, exports, module) {
 	var _paused;
 	var _lastEvent;
 	var _breakOnTracepoints = false;
+	var _breakEvents = ["DOMContentLoaded", "click"];
 
 
 	/** Actions **************************************************************/
@@ -115,20 +116,26 @@ define(function (require, exports, module) {
 
 		// determine whether to actually halt by asking all breakpoints
 		var halt = _breakOnTracepoints;
+		var trace, b;
 		for (var i in breakpoints) {
-			var b = breakpoints[i];
-			b.triggerPaused(callFrames, _lastEvent);
+			b = breakpoints[i];
+			b.triggerPaused(callFrames);
+			if (_lastEvent && (trace = b.traceForEvent(_lastEvent))) {
+				trace.setEvent(_lastEvent);
+				$exports.triggerHandler("eventTrace", [trace]);
+				_lastEvent = null;
+			}
 			if (b.haltOnPause) halt = true;
-		}
-
-		// halt (if so determined)
-		if (!halt) {
-			Inspector.Debugger.resume();
 		}
 
 		// gather some info about this pause and send the "paused" event
 		_paused = { location: loc, callFrames: callFrames, breakpoints: breakpoints, halt: halt };
 		$exports.triggerHandler("paused", _paused);
+		
+		// halt (if so determined)
+		if (!halt) {
+			Inspector.Debugger.resume();
+		}
 	}
 
 	function _onEventPause(res) {
@@ -177,7 +184,9 @@ define(function (require, exports, module) {
 	// Inspector Event: we are connected to a live session
 	function _onConnect() {
 		Inspector.Debugger.enable();
-		Inspector.DOMDebugger.setEventListenerBreakpoint("click");
+		for (var i = 0; i < _breakEvents.length; i++) {
+			Inspector.DOMDebugger.setEventListenerBreakpoint(_breakEvents[i]);
+		}
 		// load the script agent if necessary
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.load();
@@ -191,6 +200,11 @@ define(function (require, exports, module) {
 		}
 	}
 
+	// Inspector Event: Debugger.globalObjectCleared
+	function _onGlobalObjectCleared() {
+		_lastEvent = null;
+	}
+
 	/** Init Functions *******************************************************/
 	
 	// init
@@ -199,6 +213,7 @@ define(function (require, exports, module) {
 		Inspector.on("disconnect", _onDisconnect);
 		Inspector.on("Debugger.paused", _onPaused);
 		Inspector.on("Debugger.resumed", _onResumed);
+		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 	}
 
 	function unload() {
@@ -206,7 +221,10 @@ define(function (require, exports, module) {
 		Inspector.off("disconnect", _onDisconnect);
 		Inspector.off("Debugger.paused", _onPaused);
 		Inspector.off("Debugger.resumed", _onResumed);
-		Inspector.DOMDebugger.removeEventListenerBreakpoint("click");
+		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		for (var i = 0; i < _breakEvents.length; i++) {
+			Inspector.DOMDebugger.removeEventListenerBreakpoint(_breakEvents[i]);
+		}
 		$exports.off();
 		_onDisconnect();
 	}

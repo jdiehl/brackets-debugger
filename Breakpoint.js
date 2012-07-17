@@ -135,13 +135,17 @@ define(function (require, exports, module) {
 		},
 
 		// trigger paused
-		triggerPaused: function (callFrames, event) {
-			if (this.traceOnPause) {
-				var trace = new Trace.Trace(callFrames, event);
-				this.trace.push(trace);
-			}
-		}
+		triggerPaused: function (callFrames) {
+			if (! this.traceOnPause) { return; }
+			this.trace.push(new Trace.Trace(callFrames));
+		},
 
+		traceForEvent: function (event) {
+			if (! event || ! this.trace) { return; }
+			var trace = this.trace[this.trace.length - 1];
+			if (! trace.childOf(event.callFrames)) { return; }
+			return trace;
+		},
 	};
 
 	// Inspector Event: breakpoint resolved

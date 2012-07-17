@@ -27,31 +27,37 @@
 define(function (require, exports, module) {
 	'use strict';
 
-	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var Inspector   = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var ScriptAgent = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+	
 	var Breakpoint = require("Breakpoint");
 
 	var _lastTrace;
-	var _lastEvent;
 
-	function _compareLocations(l1, l2) {
+	var timeout;
+	var roots = [];
+
+	function _locationsEqual(l1, l2) {
 		var r = l1.scriptId !== "undefined" ? l1.scriptId === l2.scriptId : (l1.url && l2.url && l1.url === l2.url);
 		r = r && l1.lineNumber === l2.lineNumber && l1.columnNumber === l2.columnNumber;
 		return r;
 	}
 
-	function _compareCallFrames(cf1, cf2) {
+	function _sharedCallerCount(cf1, cf2) {
 		for (var i = 1; i <= cf1.length; i++) {
-			if (cf2.length <= i) return i - 1;
-			if (!_compareLocations(cf1[cf1.length - i].location, cf2[cf2.length - i].location)) return i - 1;
+			if (cf2.length < i) return i - 1;
+			if (!_locationsEqual(cf1[cf1.length - i].location, cf2[cf2.length - i].location)) return i - 1;
 		}
 		return i;
 	}
 
-	function Trace(callFrames, event) {
+	function Trace(callFrames) {
+		var location = callFrames[0].location;
+		var url = ScriptAgent.scriptWithId(location.scriptId).url;
+		var name = url.replace(/^.*\//, '');
+		this.id = this.baseId = name + ":" + (location.lineNumber + 1);
+
 		this.callFrames = callFrames;
-		// if (event && _compareCallFrames(callFrames, event.callFrames) >= 1) {
-		this.event = event;
-		// }
 		this.date = new Date();
 		this.children = [];
 		this._relateToTrace(_lastTrace);
@@ -59,7 +65,6 @@ define(function (require, exports, module) {
 	}
 
 	Trace.prototype = {
-
 		// resolve a single call frame variable scope
 		resolveScope: function (scope) {
 			var r = $.Deferred();
@@ -90,40 +95,92 @@ define(function (require, exports, module) {
 			return $.when.apply(null, promises);
 		},
 
+		childOf: function (callFrames) {
+			var shared = _sharedCallerCount(this.callFrames, callFrames);
+			
+			if (shared === callFrames.length - 1) {
+				var sourceFunction = callFrames[0].functionName;
+				var targetFunction = this.callFrames[this.callFrames.length - callFrames.length].functionName;
+				if (sourceFunction === targetFunction) {
+					return true;
+				}
+			}
+
+			return false;
+		},
+
+		setEvent: function (event) {
+			this.event = event;
+			this.id = this.baseId + " (" + event.data.eventName.replace(/^listener:/, '') + ")";
+		},
+
 		// check for a child call frame
 		_hasChildCallFrame: function (callFrame) {
 			for (var i in this.callFrames) {
 				var cf = this.callFrames[i];
-
 			}
 		},
 
 		// determine the relationship to another trace
 		_relateToTrace: function (trace) {
-			if (!trace) return;
-			var compare = _compareCallFrames(this.callFrames, trace.callFrames);
-			if (compare === 0) return;
+			clearTimeout(timeout);
+			var show = function (node, level) {
+				var indent = "";
+				for (var i = 0; i < level; i++) { indent += "  "; }
+				console.log(indent + node.id, node);
+				if (node.children) {
+					for (var j = 0; j < node.children.length; j++) {
+						if (j) { console.log(indent + "  ---"); }
+						show(node.children[j], level + 1);
+					}
+				}
+				if (node.next) {
+					show(node.next, level);
+				}
+			};
+			timeout = window.setTimeout(function () {
+				console.log("---[ roots ]-------------------------------");
+				for (var i = 0; i < roots.length; i++) {
+					if (i) { console.log("---"); }
+					show(roots[i], 0);
+				}
+				roots = [];
+			}, 1000);
 
-			// we are the child of a previous trace
-			if (this.callFrames.length > trace.callFrames.length) {
+			var shared, rel;
+
+			while (trace) {
+				shared = _sharedCallerCount(this.callFrames, trace.callFrames);
+				
+				// No relationship or trace is child of our parent
+				if (shared === 0 || shared >= trace.callFrames.length - 1) { break; }
+				trace = trace.parent;
+			}
+
+			// Caution: if both traces have only one callframe, length will be 0, too
+			// They might still be related, though (window.setTimeout)
+			if (! trace || (shared === 0 && (this.callFrames.length > 1 || trace.callFrames.length > 1))) {
+				console.log(this.id + ' is a root trace', this, trace);
+				roots.push(this);
+			}
+			else if (this.callFrames.length > trace.callFrames.length) {
+				console.log(this.id + ' is a child of ' + trace.id, this, trace);
 				trace.children.push(this);
 				this.parent = trace;
+				if (trace.event) { this.setEvent(trace.event); }
 			}
-
-			// we are the next trace of a previous trace's parent
-			else if (this.callFrames.length < trace.callFrames.length) {
-				this.previous = trace.parent;
-				trace.parent.next = this;
-				this.parent = this.previous.parent;
-				if (this.parent) this.parent.children.push(this);
-			}
-
-			// we are the next trace of the previous trace
-			else {
+			else if (this.callFrames.length === trace.callFrames.length) {
+				console.log(this.id + ' is a sibling of ' + trace.id, this, trace);
+				if (trace.next) {
+					console.log("Uh oh...", trace.next);
+				}
 				this.previous = trace;
 				trace.next = this;
-				this.parent = this.previous.parent;
-				if (this.parent) this.parent.children.push(this);
+				if (trace.parent) { this.parent = trace.parent; }
+				if (trace.event) { this.setEvent(trace.event); }
+			}
+			else {
+				console.error("Should not happen", this, trace);
 			}
 		}
 
