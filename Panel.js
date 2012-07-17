@@ -42,10 +42,9 @@ define(function (require, exports, module) {
 		var id       = $tab.data("id");
 		var activeId = $activeTab.data("id");
 
-		console.log("Tab change:", activeId, "=>", id);
 		if (id === activeId) { return; }
 
-		var $content = $("#" + id);
+		var $content       = $("#" + id);
 		var $activeContent = $("#" + activeId);
 
 		$activeTab.add($activeContent).removeClass("active");
