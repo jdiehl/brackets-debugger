@@ -185,7 +185,12 @@ define(function (require, exports, module) {
 	function unload() {
 	}
 
+	function reset() {
+		$events.empty();
+	}
+
 	// public methods
 	exports.init = init;
 	exports.unload = unload;
+	exports.reset = reset;
 });

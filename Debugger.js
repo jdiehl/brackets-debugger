@@ -199,7 +199,7 @@ define(function (require, exports, module) {
 
 	// Inspector Event: Debugger.globalObjectCleared
 	function _onGlobalObjectCleared() {
-		// todo
+		$exports.triggerHandler("reload");
 	}
 
 	/** Init Functions *******************************************************/
