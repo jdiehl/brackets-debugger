@@ -289,7 +289,7 @@ define(function (require, exports, module) {
 	}
 
 	function onLinesClick(event) {
-		var hot = event.metaKey;
+		var hot = event.metaKey || event.ctrlKey;
 		if (! hot || ! hover.token || ! hover.token.location) { return; }
 		var location = hover.token.location;
 		
