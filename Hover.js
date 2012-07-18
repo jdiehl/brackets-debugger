@@ -86,6 +86,10 @@ define(function (require, exports, module) {
 		
 		var b = info.subtype === 'array' ? ["[", "]"] : ["{", "}"];
 		content = b[0] + (content.length > 1 ? "\n" + content + "\n" + indent : content) + b[1];
+
+		if (info.subtype !== 'array' && info.className && info.className !== "Object") {
+			content = "<" + info.className + "> " + content;
+		}
 		
 		return content;
 	}
