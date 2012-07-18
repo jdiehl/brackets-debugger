@@ -50,6 +50,7 @@ define(function (require, exports, module) {
 	$.fn.removeClassDelayed = function (klass) {
 		var ctx = this;
 		window.setTimeout(function () { $(ctx).removeClass(klass); }, 0);
+		return ctx;
 	};
 
 	function _editorForURL(url) {
