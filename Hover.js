@@ -127,7 +127,7 @@ define(function (require, exports, module) {
 		var trace = tracepoint.trace[tracepoint.trace.length - 1];
 		if (! trace || trace.callFrames.length === 0) { return result.reject(); }
 		var callFrameIndex = 0;
-		trace.resolveCallFrame(callFrameIndex, noGlobal).done(function () {
+		trace.resolveCallFrame(callFrameIndex).done(function () {
 			var scopeChain = trace.callFrames[callFrameIndex].scopeChain;
 			for (var i = 0; i < scopeChain.length; i++) {
 				var vars = scopeChain[i].resolved;
