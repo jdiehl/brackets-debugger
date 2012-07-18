@@ -30,6 +30,7 @@ define(function (require, exports, module) {
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
 	var Debugger = require("Debugger");
 	var Panel    = require("Panel");
@@ -37,22 +38,6 @@ define(function (require, exports, module) {
 	var tabId = "jdiehl-debugger-traces";
 	
 	var $tab, $events, $tree;
-
-	var _tree = [{
-		data: "Root 1",
-		state: "closed",
-		children: [{
-			data: "Child 1",
-			children: []
-		}, {
-			data: "Child 2",
-			children: []
-		}]
-	}, {
-		data: "Root 2",
-		state: "closed",
-		children: []
-	}];
 
 	function onPaused(event, pause) {
 		var breakpoints = pause.breakpoints;
@@ -174,33 +159,18 @@ define(function (require, exports, module) {
 
 	function onTraceSelected(trace) {
 		if (! trace) { return; }
-
-		var summary = _summarizeTrace(trace);
-		var doc = DocumentManager.getCurrentDocument();
-
-		var focus = function () {
-			var editor = EditorManager.getCurrentFullEditor();
-			editor.setCursorPos(summary.line, summary.column);
-			window.setTimeout(editor.focus.bind(editor), 0);
-		};
-
-		if (doc && doc.url === summary.url) {
-			focus();
-			return;
-		}
-		
-		var path = summary.url.replace(/^file:\/\//, '');
-		DocumentManager.getDocumentForPath(path).done(function (doc) {
-			DocumentManager.setCurrentDocument(doc);
-			focus();
-		});
+		var l = trace.location;
+		GotoAgent.open(l.url, { line: l.lineNumber, ch: l.columnNumber });
 	}
 
 	var currentEventTrace;
-
+	var $activeEventEntry;
+	
 	function onEventClicked(e) {
-		event.preventDefault();
-		currentEventTrace = $(e.currentTarget).data('trace');
+		e.preventDefault();
+		if ($activeEventEntry) { $activeEventEntry.removeClass("active"); }
+		$activeEventEntry = $(e.currentTarget).addClass("active");
+		currentEventTrace = $activeEventEntry.data("trace");
 		setupTree($tree);
 	}
 
