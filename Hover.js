@@ -31,6 +31,7 @@ define(function (require, exports, module) {
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var Inspector       = brackets.getModule("LiveDevelopment/Inspector/Inspector");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
 	var Parser = require("Parser");
 
@@ -47,7 +48,7 @@ define(function (require, exports, module) {
 		if (value.type === "undefined") { return "undefined"; }
 		if (value.type === "number")    { return value.value; }
 		if (value.type === "string")    { return JSON.stringify(value.value); }
-		if (value.type === "function")  { return describeFunction(value); }
+		if (value.type === "function")  { return value.description; }
 		if (value.type === "object")    { return describeObject(value, level); }
 		if (value.description)          { return value.description; }
 		
@@ -76,14 +77,6 @@ define(function (require, exports, module) {
 		content = b[0] + (content.length > 1 ? "\n" + content + "\n" + indent : content) + b[1];
 		
 		return content;
-	}
-
-	function describeFunction(info) {
-		var location    = info.details.location;
-		var url         = ScriptAgent.scriptWithId(location.scriptId).url;
-		var description = url + ":" + (location.lineNumber + 1) + "\n" + info.description;
-
-		return description;
 	}
 
 	function removePopup() {
@@ -166,7 +159,8 @@ define(function (require, exports, module) {
 					value.details = res.details;
 					result.resolve(value);
 				});
-			} else {
+			}
+			else {
 				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
 					var pending = [];
 					var resolved = value.value = {};
@@ -278,20 +272,40 @@ define(function (require, exports, module) {
 		var resolveBefore = resolveVariableInTracepoint(variable, fn.tracepoints[0]);
 		var resolveAfter  = resolveVariableInTracepoint(variable, fn.tracepoints[1]);
 		$.when(resolveBefore, resolveAfter).done(function (before, after) {
+			if (after.details && after.details.location) {
+				token.location = after.details.location;
+			} else if (before.details && before.details.location) {
+				token.location = before.details.location;
+			}
+			
 			before = describeValue(before);
 			after  = describeValue(after);
 			if (before !== after) {
 				before += " ↦ " + after;
 			}
+
 			$popup = showValue(before, cursor.line, token.start, token.end, cmLinesNode, cm);
 		});
+	}
+
+	function onLinesClick(event) {
+		var hot = event.metaKey;
+		if (! hot || ! hover.token || ! hover.token.location) { return; }
+		var location = hover.token.location;
+		
+		var url = ScriptAgent.scriptWithId(location.scriptId).url;
+		GotoAgent.open(url, { line: location.lineNumber, ch: location.columnNumber });
+		
+		event.preventDefault();
+		return false;
 	}
 
 	function onCurrentDocumentChange() {
 		removePopup();
 		$(".CodeMirror-lines")
 			.on("mousemove", onLinesMouseMove)
-			.on("mouseout", onLinesMouseOut);
+			.on("mouseout", onLinesMouseOut)
+			.on("click", onLinesClick);
 	}
 
 	/** Init Functions *******************************************************/
@@ -310,7 +324,8 @@ define(function (require, exports, module) {
 		
 		$(".CodeMirror-lines")
 			.off("mousemove", onLinesMouseMove)
-			.off("mouseout", onLinesMouseOut);
+			.off("mouseout", onLinesMouseOut)
+			.off("click", onLinesClick);
 	}
 
 	exports.init = init;
