@@ -1,4 +1,4 @@
-[
+define(function() { return [
 	"abort",
 	"beforecopy",
 	"beforecut",
@@ -171,4 +171,4 @@
 	"webkitRegionLayoutUpdate",
 	"webkitnetworkinfochange",
 	"webkitresourcetimingbufferfull"
-]
+]});
