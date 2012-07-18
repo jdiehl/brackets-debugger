@@ -37,12 +37,14 @@ define(function (require, exports, module) {
 	var timeout;
 	var roots = [];
 
+	// compare two locations and return true if both are equal
 	function _locationsEqual(l1, l2) {
 		var r = l1.scriptId !== "undefined" ? l1.scriptId === l2.scriptId : (l1.url && l2.url && l1.url === l2.url);
 		r = r && l1.lineNumber === l2.lineNumber && l1.columnNumber === l2.columnNumber;
 		return r;
 	}
 
+	// compare two call frame arrays and return the number of shared call frames from the top
 	function _sharedCallerCount(cf1, cf2) {
 		for (var i = 1; i <= cf1.length; i++) {
 			if (cf2.length < i) return i - 1;
