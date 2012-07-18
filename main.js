@@ -121,9 +121,6 @@ define(function (require, exports, module) {
 			};
 			var tracepoint = Debugger.setTracepoint(location);
 			tracepoints.push(tracepoint);
-			$(tracepoint).on('set', function (event, res) {
-				console.log("Tracepoint set for " + name + "() in", url.replace(/^.*\//, ''), "line", res.breakpoint.location.lineNumber);
-			});
 		}
 		
 		// Remember the tracepoints

@@ -73,8 +73,6 @@ define(function (require, exports, module) {
 	}
 
 	function onEventTrace(e, trace) {
-		console.log("onEventTrace", trace.id, trace);
-
 		var summary = _summarizeTrace(trace);
 		
 		var $event = $('<div class="event">')
@@ -130,7 +128,6 @@ define(function (require, exports, module) {
 		
 		if (! currentEventTrace) { return; }
 
-		console.log(currentEventTrace);
 		if (! currentEventTrace.children || currentEventTrace.children.length === 0) {
 			$tree.text("No children");
 			return;
