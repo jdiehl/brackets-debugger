@@ -63,7 +63,7 @@ define(function (require, exports, module) {
 		}
 
 		// connect the trace to the last parent
-		if (_lastParent) {
+		if (trace.type !== "event" && _lastParent) {
 			_lastParent.children.push(trace);
 			trace.parent = _lastParent;
 		}
