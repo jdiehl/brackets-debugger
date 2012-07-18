@@ -35,29 +35,35 @@ define(function (require, exports, module) {
 
 	var Parser = require("Parser");
 
+	// config
+	var tabWidth    = 2;
+	var maxChildren = 5;
+	var maxDepth    = 2;
+
+	// state
 	var hover = { cursor: null, token: null };
 	var $popup;
-	var tabWidth = 2;
 	
 	/** Helper Functions *****************************************************/
 	
 	function describeValue(value, level) {
-		level = level || 0;
+		if (! level) { level = 0; }
 
 		if (value.value === null)       { return "null"; }
 		if (value.type === "undefined") { return "undefined"; }
+		if (value.type === "boolean")   { return value.value; }
 		if (value.type === "number")    { return value.value; }
 		if (value.type === "string")    { return JSON.stringify(value.value); }
 		if (value.type === "function")  { return value.description; }
 		if (value.type === "object")    { return describeObject(value, level); }
-		if (value.description)          { return value.description; }
+		if (value.description)          { return "<" + value.description + ">"; }
 		
 		// Pretty print
 		return JSON.stringify(value, undefined, tabWidth);
 	}
 
 	function describeObject(info, level) {
-		if (! info.value) { return info.description; }
+		if (! info.value) { return "<" + info.description + ">"; }
 
 		var i, indentUnit = "", indent = "";
 		for (i = 0; i < tabWidth; i++) { indentUnit += " "; }
@@ -65,16 +71,25 @@ define(function (require, exports, module) {
 
 		var content = [];
 		for (var key in info.value) {
+			var value = info.value[key];
 			var line = indent + indentUnit;
-			// Object key
-			if (info.subtype !== 'array') { line += key + ": "; }
-			line += describeValue(info.value[key], level + 1);
+			if (value.special === 'abbreviated') {
+				line += "...";
+			} else {
+				// Object key
+				if (info.subtype !== 'array') { line += key + ": "; }
+				line += describeValue(value, level + 1);
+			}
 			content.push(line);
 		}
 		content = content.join(",\n");
 		
 		var b = info.subtype === 'array' ? ["[", "]"] : ["{", "}"];
 		content = b[0] + (content.length > 1 ? "\n" + content + "\n" + indent : content) + b[1];
+
+		if (info.subtype !== 'array' && info.className && info.className !== "Object") {
+			content = "<" + info.className + "> " + content;
+		}
 		
 		return content;
 	}
@@ -126,27 +141,38 @@ define(function (require, exports, module) {
 
 		var trace = tracepoint.trace[tracepoint.trace.length - 1];
 		if (! trace || trace.callFrames.length === 0) { return result.reject(); }
+		
 		var callFrameIndex = 0;
-		trace.resolveCallFrame(callFrameIndex).done(function () {
-			var scopeChain = trace.callFrames[callFrameIndex].scopeChain;
-			for (var i = 0; i < scopeChain.length; i++) {
-				var vars = scopeChain[i].resolved;
-				if (vars && vars[variable]) {
-					return resolveVariable(vars[variable]).done(result.resolve);
+		var callFrame = trace.callFrames[callFrameIndex];
+
+		if (variable === "this" && callFrame.this) {
+			resolveVariable(callFrame.this).done(result.resolve);
+		}
+		else {
+			trace.resolveCallFrame(callFrameIndex).done(function () {
+				var scopeChain = callFrame.scopeChain;
+				for (var i = 0; i < scopeChain.length; i++) {
+					var vars = scopeChain[i].resolved;
+					if (vars && vars[variable]) {
+						resolveVariable(vars[variable]).done(result.resolve);
+						return;
+					}
 				}
-			}
-			result.reject();
-		});
+				result.reject();
+			});
+		}
 
 		return result.promise();
 	}
 
-	function resolveVariable(value, cache) {
+	function resolveVariable(value, cache, depth) {
 		if (! cache) { cache = {}; }
+		if (! depth) { depth = 0; }
 		
 		var result = new $.Deferred();
-		
-		if (! value.objectId) {
+
+		var ignore = !value || (value.type == "object" && (value.className == "Window" || value.className == "Document"));
+		if (ignore || ! value.objectId) {
 			result.resolve(value);
 		}
 		else if (cache[value.objectId]) {
@@ -160,21 +186,29 @@ define(function (require, exports, module) {
 					result.resolve(value);
 				});
 			}
-			else {
+			else if (depth < maxDepth) {
 				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
 					var pending = [];
 					var resolved = value.value = {};
-					for (var i in res.result) {
+
+					var used = 0;
+					for (var i = 0; i < res.result.length; i++) {
 						var info = res.result[i];
 						if (! info.enumerable) { continue; }
+						if (++used > maxChildren) {
+							resolved[""] = { special: "abbreviated" };
+							break;
+						}
 						resolved[info.name] = info.value;
-						pending.push(resolveVariable(info.value));
+						pending.push(resolveVariable(info.value, cache, depth + 1));
 					}
 
 					$.when.apply(null, pending).done(function () {
 						result.resolve(value);
 					});
 				});
+			} else {
+				result.resolve(value);
 			}
 		}
 

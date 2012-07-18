@@ -50,6 +50,7 @@ define(function (require, exports, module) {
 	$.fn.removeClassDelayed = function (klass) {
 		var ctx = this;
 		window.setTimeout(function () { $(ctx).removeClass(klass); }, 0);
+		return ctx;
 	};
 
 	function _editorForURL(url) {
@@ -164,7 +165,8 @@ define(function (require, exports, module) {
 
 		cache.variables = {};
 		var onVariable = function (node) {
-			if (node.type === 'VariableDeclarator') { node = node.id; }
+			if (node.type === 'ThisExpression') { node.name = "this"; }
+			else if (node.type === 'VariableDeclarator') { node = node.id; }
 			
 			var line   = node.loc.start.line;
 			var column = node.loc.start.column;
@@ -177,7 +179,8 @@ define(function (require, exports, module) {
 			FunctionDeclaration: onFunction,
 			FunctionExpression:  onFunction,
 			Identifier:          onVariable,
-			VariableDeclarator:  onVariable
+			VariableDeclarator:  onVariable,
+			ThisExpression:      onVariable
 		};
 		
 		Parser.walk(tree, handlers);
