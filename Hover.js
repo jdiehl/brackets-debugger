@@ -273,6 +273,9 @@ define(function (require, exports, module) {
 
 	function onCurrentDocumentChange() {
 		removePopup();
+		$(".CodeMirror-lines")
+			.on("mousemove", onLinesMouseMove)
+			.on("mouseout", onLinesMouseOut);
 	}
 
 	/** Init Functions *******************************************************/
@@ -280,9 +283,6 @@ define(function (require, exports, module) {
 	// init
 	function init() {
 		// register for debugger events
-		$(".CodeMirror-lines")
-			.on("mousemove", onLinesMouseMove)
-			.on("mouseout", onLinesMouseOut);
 
 		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
 		setTimeout(onCurrentDocumentChange, 0);
@@ -299,6 +299,4 @@ define(function (require, exports, module) {
 
 	exports.init = init;
 	exports.unload = unload;
-
-	$(init);
 });
