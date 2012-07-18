@@ -120,7 +120,6 @@ define(function (require, exports, module) {
 			if (scope.resolved) {
 				r.resolve(scope.resolved);
 			} else {
-				console.log("GET PROPERTIES: " + scope.object.objectId);
 				Inspector.Runtime.getProperties(scope.object.objectId, true, function (res) {
 					scope.resolved = {};
 					for (var i in res.result) {

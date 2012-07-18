@@ -191,7 +191,6 @@ define(function (require, exports, module) {
 		
 		var path = summary.url.replace(/^file:\/\//, '');
 		DocumentManager.getDocumentForPath(path).done(function (doc) {
-			console.log(doc);
 			DocumentManager.setCurrentDocument(doc);
 			focus();
 		});
