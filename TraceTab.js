@@ -86,7 +86,7 @@ define(function (require, exports, module) {
 		return summary;
 	}
 
-	function _traceChildrenForTree(parent, isRoot) {
+	function _traceChildrenForTree(parent) {
 		var children = [];
 
 		for (var i = 0; i < parent.children.length; i++) {
@@ -97,13 +97,8 @@ define(function (require, exports, module) {
 				metadata: { trace: trace }
 			};
 			if (trace.children && trace.children.length > 0) {
-				if (isRoot) {
-					child.state = "open";
-					child.children = _traceChildrenForTree(trace, false);
-				} else {
-					child.state = "closed";
-					child.children = [];
-				}
+				child.state = "open";
+				child.children = _traceChildrenForTree(trace, false);
 			}
 			children.push(child);
 		}
@@ -113,7 +108,7 @@ define(function (require, exports, module) {
 
 	function _treeDataProvider(treeNode, callback) {
 		var parent = (treeNode === -1) ? { children: [currentEventTrace] } : treeNode.data('trace');
-		var children = _traceChildrenForTree(parent, treeNode === -1);
+		var children = _traceChildrenForTree(parent);
 		callback(children);
 	}
 	
