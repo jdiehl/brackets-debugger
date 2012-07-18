@@ -30,6 +30,7 @@ define(function (require, exports, module) {
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var Inspector       = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
 	var Parser = require("Parser");
 
@@ -46,7 +47,7 @@ define(function (require, exports, module) {
 		if (value.type === "undefined") { return "undefined"; }
 		if (value.type === "number")    { return value.value; }
 		if (value.type === "string")    { return JSON.stringify(value.value); }
-		if (value.type === "function")  { return value.description; }
+		if (value.type === "function")  { return describeFunction(value); }
 		if (value.type === "object")    { return describeObject(value, level); }
 		if (value.description)          { return value.description; }
 		
@@ -75,6 +76,14 @@ define(function (require, exports, module) {
 		content = b[0] + (content.length > 1 ? "\n" + content + "\n" + indent : content) + b[1];
 		
 		return content;
+	}
+
+	function describeFunction(info) {
+		var location    = info.details.location;
+		var url         = ScriptAgent.scriptWithId(location.scriptId).url;
+		var description = url + ":" + (location.lineNumber + 1) + "\n" + info.description;
+
+		return description;
 	}
 
 	function removePopup() {
@@ -152,20 +161,27 @@ define(function (require, exports, module) {
 		}
 		else {
 			cache[value.objectId] = value;
-			Inspector.Runtime.getProperties(value.objectId, true, function (res) {
-				var pending = [];
-				var resolved = value.value = {};
-				for (var i in res.result) {
-					var info = res.result[i];
-					if (! info.enumerable) { continue; }
-					resolved[info.name] = info.value;
-					pending.push(resolveVariable(info.value));
-				}
-
-				$.when.apply(null, pending).done(function () {
+			if (value.type === "function") {
+				Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
+					value.details = res.details;
 					result.resolve(value);
 				});
-			});
+			} else {
+				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
+					var pending = [];
+					var resolved = value.value = {};
+					for (var i in res.result) {
+						var info = res.result[i];
+						if (! info.enumerable) { continue; }
+						resolved[info.name] = info.value;
+						pending.push(resolveVariable(info.value));
+					}
+
+					$.when.apply(null, pending).done(function () {
+						result.resolve(value);
+					});
+				});
+			}
 		}
 
 		return result.promise();
