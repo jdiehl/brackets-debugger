@@ -299,6 +299,4 @@ define(function (require, exports, module) {
 
 	exports.init = init;
 	exports.unload = unload;
-
-	$(init);
 });
