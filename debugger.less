@@ -158,20 +158,22 @@
 			position: absolute;
 			overflow: auto;
 			padding: 5px;
-			background-color: #3B3F41;
-			color: #fff;
 		}
 		.events {
 			top: 0; bottom: 0;
 			left: 0; width: 250px;
+
 			.event {
-				-webkit-animation: trace 1s ease-out;
-				border-bottom: 1px solid #fff;
-				.time, .type {
-					float: left;
+		        font-size: 13px;
+			    line-height: 22px;
+				text-align: right;
+				-webkit-transition: background 1s ease-out;
+				&.fresh {
+					background-color: #fe9;
 				}
-				.function, .file {
-					text-align: right;
+				
+				.time {
+					float: left;
 				}
 			}
 		}
@@ -179,6 +181,24 @@
 			top: 0; bottom: 0;
 			left: 260px; right: 0;
 		}
+	}
+
+	.jstree-brackets ins { background-image:url("img/jsTreeSprites.png"); }
+	.jstree-brackets .jstree-no-dots .jstree-leaf > ins { background:transparent; }
+
+	.jstree-brackets li {
+	    a {
+	        color: #666;
+	        &.jstree-clicked {
+	            color: #000;
+	        }
+	    }
+	    &.jstree-closed, &.jstree-open {
+	        margin-left: 18px;
+	    }
+	    &.jstree-leaf {
+	        margin-left: 18px;
+	    }
 	}
 
 	// quiet-scrollbars.css isn't generic enough

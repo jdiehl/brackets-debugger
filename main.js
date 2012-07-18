@@ -46,6 +46,12 @@ define(function (require, exports, module) {
 
 	/** Helper Functions *****************************************************/
 
+	// Like removeClass, but with a delay to trigger CSS transition animations
+	$.fn.removeClassDelayed = function (klass) {
+		var ctx = this;
+		window.setTimeout(function () { $(ctx).removeClass(klass); }, 0);
+	};
+
 	function _editorForURL(url) {
 		var doc = DocumentManager.getCurrentDocument();
 		if (doc && doc.url === url) {
