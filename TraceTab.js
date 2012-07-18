@@ -150,6 +150,8 @@ define(function (require, exports, module) {
 			themes : { theme: "brackets", url: "styles/jsTreeTheme.css", dots: false, icons: false }
 		})
 		.bind("mousedown.jstree", function (event) {
+			event.preventDefault();
+			if ($(event.target).is(".jstree-icon")) { return; }
 			onTraceSelected($(event.target).closest('li').data('trace'));
 		});
 		
@@ -197,6 +199,7 @@ define(function (require, exports, module) {
 	var currentEventTrace;
 
 	function onEventClicked(e) {
+		event.preventDefault();
 		currentEventTrace = $(e.currentTarget).data('trace');
 		setupTree($tree);
 	}
@@ -205,7 +208,7 @@ define(function (require, exports, module) {
 	function init() {
 		// configure tab content
 		$tab = $('<div class="table-container quiet-scrollbars">').attr('id', tabId);
-		$events = $('<div class="events">').on('click', 'div.event', onEventClicked).appendTo($tab);
+		$events = $('<div class="events">').on('mousedown', 'div.event', onEventClicked).appendTo($tab);
 		$tree = $('<div class="tree quiet-scrollbars">').appendTo($tab);
 		Panel.addTab(tabId, "Traces", $tab);
 
