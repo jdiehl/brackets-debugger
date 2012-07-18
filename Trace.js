@@ -29,10 +29,11 @@ define(function (require, exports, module) {
 
 	var Inspector   = brackets.getModule("LiveDevelopment/Inspector/Inspector");
 	var ScriptAgent = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+	var DOMAgent    = brackets.getModule("LiveDevelopment/Agents/DOMAgent");
 	
 	var Breakpoint = require("Breakpoint");
 
-	var timeout;
+	var _DOMReady = false;
 
 	// compare two locations and return true if both are equal
 	function _locationsEqual(l1, l2) {
@@ -142,6 +143,29 @@ define(function (require, exports, module) {
 				promises.push(this.resolveScope(scope));
 			}
 			return $.when.apply(null, promises);
+		},
+
+		resolveTargetNode: function () {
+			function resolve() {
+				Inspector.DOM.requestNode(nodeObject.objectId, function (res) {
+					// res = {nodeId}
+					var node = DOMAgent.nodeWithId(res.nodeId);
+					if (node) r.resolve(node);
+					else r.reject();
+					_DOMReady = true;
+				});
+			}
+
+			var r = $.Deferred();
+			var nodeObject = this.callFrames[0].this;
+			if (!nodeObject) {
+				r.reject();
+			} else {
+				// wait for the DOM agent, then resolve the node
+				if (!_DOMReady) Inspector.on("DOMAgent.getDocument", resolve);
+				else resolve();
+			}
+			return r.promise();
 		},
 
 		childOf: function (callFrames) {

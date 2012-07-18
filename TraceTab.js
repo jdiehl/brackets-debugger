@@ -31,13 +31,14 @@ define(function (require, exports, module) {
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
+	var DOMAgent        = brackets.getModule("LiveDevelopment/Agents/DOMAgent");
 
 	var Debugger = require("Debugger");
 	var Panel    = require("Panel");
 
 	var tabId = "jdiehl-debugger-traces";
 	
-	var $tab, $events, $tree;
+	var $tab, $events, $node, $tree;
 
 	function onPaused(event, pause) {
 		var breakpoints = pause.breakpoints;
@@ -49,6 +50,14 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function onNodeClick(event) {
+		event.preventDefault();
+		var node = $node.data("node");
+		if (!node) return;
+
+		GotoAgent.open(DOMAgent.url, node.location);
+	}
+
 	function _twoDigits(number) {
 		return String(100 + number).slice(-2);
 	}
@@ -57,33 +66,30 @@ define(function (require, exports, module) {
 		return [time.getHours(), time.getMinutes(), time.getSeconds()].map(_twoDigits).join(":");
 	}
 
-	function onEventTrace(e, trace) {
-		var summary = _summarizeTrace(trace);
-		
-		var $event = $('<div class="fresh event">')
-			.data('trace', trace)
-			.append($('<div class="time">').text(_formatTime(trace.date)))
-			.append($('<div class="type">').text(summary.event))
-			.prependTo($events)
-			.removeClassDelayed("fresh");
+	function _nodeDescription(node) {
+		var name = node.name.toLowerCase();
+		if (name[0] === "#") name = name.substr(1);
+		var r = "<" + name;
+		if (node.attributes.id) {
+			r += "#" + node.attributes.id;
+		}
+		r += ">";
+		return r;
 	}
 
-	function _summarizeTrace(trace) {
-		var summary = {};
-		
-		summary.frame    = trace.callFrames[0];
-		summary.fn       = summary.frame.functionName;
-		summary.location = summary.frame.location;
-		summary.scriptId = summary.location.scriptId;
-		summary.line     = summary.location.lineNumber;
-		summary.column   = summary.location.columnNumber;
-		summary.url      = ScriptAgent.scriptWithId(summary.scriptId).url;
-		summary.file     = summary.url.replace(/^.*\//, '');
-		if (trace.event) {
-			summary.event = trace.event;
-		}
-
-		return summary;
+	function onEventTrace(e, trace) {
+		var $event = $('<div class="fresh event">');
+		var eventName = trace.event;
+		if (trace.callFrames[0].this.className === "Window") eventName = "<window>" + eventName;
+		var $eventDesc = $('<div class="type">').text(eventName);
+		$event.data('trace', trace)
+			.append($('<div class="time">').text(_formatTime(trace.date)))
+			.append($eventDesc)
+			.prependTo($events)
+			.removeClassDelayed("fresh");
+		trace.resolveTargetNode().then(function (node) {
+			$eventDesc.text(_nodeDescription(node) + trace.event);
+		});
 	}
 
 	function _traceChildrenForTree(parent) {
@@ -112,9 +118,22 @@ define(function (require, exports, module) {
 		var children = _traceChildrenForTree(parent);
 		callback(children);
 	}
+
+	function setupNode($node) {
+		$node.hide();
+		$node.data("node", null);
+		if (currentEventTrace) {
+			currentEventTrace.resolveTargetNode().then(function (node) {
+				if (node.name === "#document") return;
+				$node.text(_nodeDescription(node));
+				$node.data("node", node);
+				$node.show();
+			});
+		}
+	}
 	
 	function setupTree($tree) {
-		$tree.children().remove();
+		$tree.empty();
 		
 		if (! currentEventTrace) { return; }
 
@@ -135,22 +154,6 @@ define(function (require, exports, module) {
 			if ($(event.target).is(".jstree-icon")) { return; }
 			onTraceSelected($(event.target).closest('li').data('trace'));
 		});
-		
-		// .bind("before.jstree", function (event, data) {
-		// 	console.log("before.jstree");
-		// })
-		// .bind("select_node.jstree", function (event, data) {
-		// 	console.log("select_node.jstree");
-		// })
-		// .bind("reopen.jstree", function (event, data) {
-		// 	console.log("reopen.jstree");
-		// })
-		// .bind("scroll.jstree", function (e) {
-		// 	console.log("scroll.jstree");
-		// })
-		// .bind("loaded.jstree open_node.jstree close_node.jstree", function (event, data) {
-		// 	console.log(event.type + ".jstree");
-		// })
 	}
 
 	function onTraceSelected(trace) {
@@ -167,6 +170,7 @@ define(function (require, exports, module) {
 		if ($activeEventEntry) { $activeEventEntry.removeClass("active"); }
 		$activeEventEntry = $(e.currentTarget).addClass("active");
 		currentEventTrace = $activeEventEntry.data("trace");
+		setupNode($node);
 		setupTree($tree);
 	}
 
@@ -175,6 +179,8 @@ define(function (require, exports, module) {
 		// configure tab content
 		$tab = $('<div class="table-container quiet-scrollbars">').attr('id', tabId);
 		$events = $('<div class="events">').on('mousedown', 'div.event', onEventClicked).appendTo($tab);
+		$node = $('<div class="node">').appendTo($tab);
+		$node.on("click", onNodeClick);
 		$tree = $('<div class="tree quiet-scrollbars">').appendTo($tab);
 		Panel.addTab(tabId, "Traces", $tab);
 
