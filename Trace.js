@@ -88,7 +88,7 @@ define(function (require, exports, module) {
 		this.location = this.callFrames[0].location;
 		this.location.url = ScriptAgent.scriptWithId(this.location.scriptId).url;
 		var name = this.location.url.replace(/^.*\//, '');
-		this.id = this.baseId = name + ":" + (this.location.lineNumber + 1);
+		this.id = name + ":" + (this.location.lineNumber + 1);
 
 		// connect the trace to its siblings
 		_setupTraceTree(this);
@@ -161,7 +161,6 @@ define(function (require, exports, module) {
 
 		setEvent: function (event) {
 			this.event = event;
-			this.id = this.baseId + " (" + event.data.eventName.replace(/^listener:/, '') + ")";
 		},
 
 		// check for a child call frame
