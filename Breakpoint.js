@@ -37,15 +37,17 @@ define(function (require, exports, module) {
 	var $exports = $(exports);
 
 	// Breakpoints Class
-	function Breakpoint(location, condition, isTracePoint) {
+	function Breakpoint(location, condition, type) {
+		if (type === undefined) type = "user";
 		this.location = location;
 		this.condition = condition;
+		this.type = type;
 		this.trace = [];
-		
+
 		this.number = nextNumber++;
 		this.active = false;
 
-		if (isTracePoint) {
+		if (type !== "user") {
 			this.haltOnPause = false;
 			this.traceOnPause = true;
 		} else {
@@ -137,7 +139,7 @@ define(function (require, exports, module) {
 		// trigger paused
 		triggerPaused: function (callFrames) {
 			if (! this.traceOnPause) { return; }
-			this.trace.push(new Trace.Trace(callFrames));
+			this.trace.push(new Trace.Trace(this.type, callFrames));
 		},
 
 		traceForEvent: function (event) {

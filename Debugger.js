@@ -32,6 +32,7 @@ define(function (require, exports, module) {
 		LiveDevelopment = brackets.getModule("LiveDevelopment/LiveDevelopment");
 
 	var Breakpoint = require("Breakpoint");
+	var Trace = require("Trace");
 	
 	var $exports = $(exports);
 	var _paused;
@@ -67,8 +68,8 @@ define(function (require, exports, module) {
 		Inspector.Debugger.stepOut();
 	}
 
-	function setTracepoint(location) {
-		var breakpoint = new Breakpoint.Breakpoint(location, undefined, true);
+	function setTracepoint(location, type) {
+		var breakpoint = new Breakpoint.Breakpoint(location, undefined, type);
 		breakpoint.set();
 		return breakpoint;
 	}
@@ -122,7 +123,7 @@ define(function (require, exports, module) {
 			b.triggerPaused(callFrames);
 			if (_lastEvent && (trace = b.traceForEvent(_lastEvent))) {
 				trace.setEvent(_lastEvent);
-				$exports.triggerHandler("eventTrace", [trace]);
+				// $exports.triggerHandler("eventTrace", [trace]);
 				_lastEvent = null;
 			}
 			if (b.haltOnPause) halt = true;
@@ -139,6 +140,9 @@ define(function (require, exports, module) {
 	}
 
 	function _onEventPause(res) {
+		var trace = new Trace.Trace("event", res.callFrames);
+		console.log(trace);
+		$exports.triggerHandler("eventTrace", trace);
 		_lastEvent = res;
 		Inspector.Debugger.resume();
 	}

@@ -119,7 +119,7 @@ define(function (require, exports, module) {
 				// The end tracepoint needs be before }, not after, else it's hit right with the first one
 				columnNumber: key === 'end' ? loc.column - 1 : loc.column
 			};
-			var tracepoint = Debugger.setTracepoint(location);
+			var tracepoint = Debugger.setTracepoint(location, "function." + key);
 			tracepoints.push(tracepoint);
 		}
 		

@@ -32,10 +32,7 @@ define(function (require, exports, module) {
 	
 	var Breakpoint = require("Breakpoint");
 
-	var _lastTrace;
-
 	var timeout;
-	var roots = [];
 
 	// compare two locations and return true if both are equal
 	function _locationsEqual(l1, l2) {
@@ -45,7 +42,7 @@ define(function (require, exports, module) {
 	}
 
 	// compare two call frame arrays and return the number of shared call frames from the top
-	function _sharedCallerCount(cf1, cf2) {
+	function _sharedCallFrameCount(cf1, cf2) {
 		for (var i = 1; i <= cf1.length; i++) {
 			if (cf2.length < i) return i - 1;
 			if (!_locationsEqual(cf1[cf1.length - i].location, cf2[cf2.length - i].location)) return i - 1;
@@ -53,26 +50,76 @@ define(function (require, exports, module) {
 		return i;
 	}
 
-	function Trace(callFrames) {
-		var location = callFrames[0].location;
-		var url = ScriptAgent.scriptWithId(location.scriptId).url;
-		var name = url.replace(/^.*\//, '');
-		this.id = this.baseId = name + ":" + (location.lineNumber + 1);
+	var _lastParent;
+	var _rootTraces = [];
 
+	// attach a new trace to the trace and track new root traces
+	function _setupTraceTree(trace) {
+
+		// close a function
+		if (trace.type === "function.end") {
+			_lastParent = _lastParent.parent;
+			return;
+		}
+
+		// connect the trace to the last parent
+		if (_lastParent) {
+			_lastParent.children.push(trace);
+			trace.parent = _lastParent;
+		}
+
+		// track root traces
+		if (trace.type === "event" || !_lastParent) {
+			_rootTraces.push(trace);
+		}
+
+		// make this trace the last parent
+		_lastParent = trace;
+	}
+
+	function Trace(type, callFrames) {
+		this.type = type;
 		this.callFrames = callFrames;
 		this.date = new Date();
 		this.children = [];
-		this._relateToTrace(_lastTrace);
-		_lastTrace = this;
+
+		// compute the location and id of the trace
+		this.location = this.callFrames[0].location;
+		this.location.url = ScriptAgent.scriptWithId(this.location.scriptId).url;
+		var name = this.location.url.replace(/^.*\//, '');
+		this.id = this.baseId = name + ":" + (location.lineNumber + 1);
+
+		// connect the trace to its siblings
+		_setupTraceTree(this);
 	}
 
 	Trace.prototype = {
+		findParent: function (trace) {
+			if (trace.type === event) return trace;
+
+			while (trace) {
+				var shared = _sharedCallFrameCount(this.callFrames, trace.callFrames);
+
+				// this trace is not related to the given trace
+				if (shared === 0) return undefined;
+
+				// the trace is the parent
+				if (shared === trace.callFrames.length) {
+					return trace;
+				}
+
+				// try the trace's parent
+				trace = trace.parent;
+			}
+		},
+
 		// resolve a single call frame variable scope
 		resolveScope: function (scope) {
 			var r = $.Deferred();
 			if (scope.resolved) {
 				r.resolve(scope.resolved);
 			} else {
+				console.log("GET PROPERTIES: " + scope.object.objectId);
 				Inspector.Runtime.getProperties(scope.object.objectId, true, function (res) {
 					scope.resolved = {};
 					for (var i in res.result) {
@@ -98,7 +145,7 @@ define(function (require, exports, module) {
 		},
 
 		childOf: function (callFrames) {
-			var shared = _sharedCallerCount(this.callFrames, callFrames);
+			var shared = _sharedCallFrameCount(this.callFrames, callFrames);
 			
 			if (shared === callFrames.length - 1) {
 				var sourceFunction = callFrames[0].functionName;
@@ -123,46 +170,12 @@ define(function (require, exports, module) {
 			}
 		},
 
-		// determine the relationship to another trace
-		_relateToTrace: function (trace) {
-			var shared, rel;
-
-			while (trace) {
-				shared = _sharedCallerCount(this.callFrames, trace.callFrames);
-				
-				// No relationship or trace is child of our parent
-				if (shared === 0 || shared >= trace.callFrames.length - 1) { break; }
-				trace = trace.parent;
-			}
-
-			// Caution: if both traces have only one callframe, length will be 0, too
-			// They might still be related, though (window.setTimeout)
-			if (! trace || (shared === 0 && (this.callFrames.length > 1 || trace.callFrames.length > 1))) {
-				//console.log(this.id + ' is a root trace', this, trace);
-				roots.push(this);
-			}
-			else if (this.callFrames.length > trace.callFrames.length) {
-				//console.log(this.id + ' is a child of ' + trace.id, this, trace);
-				trace.children.push(this);
-				this.parent = trace;
-				if (trace.event) { this.setEvent(trace.event); }
-			}
-			else if (this.callFrames.length === trace.callFrames.length) {
-				//console.log(this.id + ' is a sibling of ' + trace.id, this, trace);
-				if (trace.next) {
-					console.error("Sibling already has a next trace", trace.next);
-				}
-				this.previous = trace;
-				trace.next = this;
-				if (trace.parent) { this.parent = trace.parent; }
-				if (trace.event) { this.setEvent(trace.event); }
-			}
-			else {
-				console.error("A non-root trace has less callframes than another trace and all its parents", this, trace);
-			}
-		}
-
 	};
 
+	function rootTraces() {
+		return _rootTraces;
+	}
+
 	exports.Trace = Trace;
+	exports.rootTraces = rootTraces;
 });
