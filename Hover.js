@@ -142,21 +142,21 @@ define(function (require, exports, module) {
 		var callFrame = trace.callFrames[callFrameIndex];
 
 		if (variable === "this" && callFrame.this) {
-			return resolveVariable(callFrame.this).done(result.resolve);
+			resolveVariable(callFrame.this).done(result.resolve);
 		}
 		else {
-			trace.resolveCallFrame(callFrameIndex, noGlobal).done(function () {
+			trace.resolveCallFrame(callFrameIndex).done(function () {
 				var scopeChain = callFrame.scopeChain;
 				for (var i = 0; i < scopeChain.length; i++) {
 					var vars = scopeChain[i].resolved;
 					if (vars && vars[variable]) {
-						return resolveVariable(vars[variable]).done(result.resolve);
+						resolveVariable(vars[variable]).done(result.resolve);
+						return;
 					}
 				}
 				result.reject();
 			});
 		}
-		
 
 		return result.promise();
 	}

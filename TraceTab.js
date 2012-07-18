@@ -91,9 +91,10 @@ define(function (require, exports, module) {
 
 		for (var i = 0; i < parent.children.length; i++) {
 			var trace = parent.children[i];
-			
+			if (!trace.script()) break;
+
 			var child = {
-				data: trace.id,
+				data: "[" + trace.locationName() + "] " + trace.functionName(),
 				metadata: { trace: trace }
 			};
 			if (trace.children && trace.children.length > 0) {
@@ -118,7 +119,7 @@ define(function (require, exports, module) {
 		if (! currentEventTrace) { return; }
 
 		if (! currentEventTrace.children || currentEventTrace.children.length === 0) {
-			$tree.text("No children");
+			$tree.text("Empty");
 			return;
 		}
 
@@ -184,7 +185,12 @@ define(function (require, exports, module) {
 	function unload() {
 	}
 
+	function reset() {
+		$events.empty();
+	}
+
 	// public methods
 	exports.init = init;
 	exports.unload = unload;
+	exports.reset = reset;
 });

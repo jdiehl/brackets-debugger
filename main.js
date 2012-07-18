@@ -221,6 +221,10 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function onReload(event) {
+		TraceTab.reset();
+	}
+
 	function onResumed(event, res) {
 		if (res.halt && res.location) {
 			var editor = _editorForLocation(res.location);
@@ -264,6 +268,7 @@ define(function (require, exports, module) {
 		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
 		$Debugger.on("paused", onPaused);
 		$Debugger.on("resumed", onResumed);
+		$Debugger.on("reload", onReload);
 
 		// register for code mirror click events
 		// Todo: use CodeMirror's onGutterClick

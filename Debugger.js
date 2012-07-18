@@ -33,12 +33,11 @@ define(function (require, exports, module) {
 
 	var Breakpoint = require("Breakpoint");
 	var Trace = require("Trace");
+	var events = require("events");
 	
 	var $exports = $(exports);
 	var _paused;
-	var _lastEvent;
 	var _breakOnTracepoints = false;
-	var _breakEvents = ["DOMContentLoaded", "click"];
 
 
 	/** Actions **************************************************************/
@@ -121,11 +120,6 @@ define(function (require, exports, module) {
 		for (var i in breakpoints) {
 			b = breakpoints[i];
 			b.triggerPaused(callFrames);
-			if (_lastEvent && (trace = b.traceForEvent(_lastEvent))) {
-				trace.setEvent(_lastEvent);
-				// $exports.triggerHandler("eventTrace", [trace]);
-				_lastEvent = null;
-			}
 			if (b.haltOnPause) halt = true;
 		}
 
@@ -143,7 +137,6 @@ define(function (require, exports, module) {
 		var eventName = res.data.eventName.substr(9);
 		var trace = new Trace.Trace("event", res.callFrames, eventName);
 		$exports.triggerHandler("eventTrace", trace);
-		_lastEvent = res;
 		Inspector.Debugger.resume();
 	}
 
@@ -188,8 +181,8 @@ define(function (require, exports, module) {
 	// Inspector Event: we are connected to a live session
 	function _onConnect() {
 		Inspector.Debugger.enable();
-		for (var i = 0; i < _breakEvents.length; i++) {
-			Inspector.DOMDebugger.setEventListenerBreakpoint(_breakEvents[i]);
+		for (var i = 0; i < events.length; i++) {
+			Inspector.DOMDebugger.setEventListenerBreakpoint(events[i]);
 		}
 		// load the script agent if necessary
 		if (!LiveDevelopment.agents.script) {
@@ -206,7 +199,7 @@ define(function (require, exports, module) {
 
 	// Inspector Event: Debugger.globalObjectCleared
 	function _onGlobalObjectCleared() {
-		_lastEvent = null;
+		$exports.triggerHandler("reload");
 	}
 
 	/** Init Functions *******************************************************/
@@ -226,8 +219,8 @@ define(function (require, exports, module) {
 		Inspector.off("Debugger.paused", _onPaused);
 		Inspector.off("Debugger.resumed", _onResumed);
 		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		for (var i = 0; i < _breakEvents.length; i++) {
-			Inspector.DOMDebugger.removeEventListenerBreakpoint(_breakEvents[i]);
+		for (var i = 0; i < events.length; i++) {
+			Inspector.DOMDebugger.removeEventListenerBreakpoint(events[i]);
 		}
 		$exports.off();
 		_onDisconnect();

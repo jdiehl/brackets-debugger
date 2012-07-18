@@ -63,7 +63,7 @@ define(function (require, exports, module) {
 		}
 
 		// connect the trace to the last parent
-		if (_lastParent) {
+		if (trace.type !== "event" && _lastParent) {
 			_lastParent.children.push(trace);
 			trace.parent = _lastParent;
 		}
@@ -158,8 +158,19 @@ define(function (require, exports, module) {
 			return false;
 		},
 
-		setEvent: function (event) {
-			this.event = event;
+		locationName: function () {
+			var script = this.script();
+			if (!script) return undefined;
+			return script.url.replace(/^.*\//, '') + ":" + (this.location.lineNumber + 1);
+		},
+
+		functionName: function () {
+			var name = this.callFrames[0].functionName;
+			return name.length > 0 ? name : "<anonymous>";
+		},
+
+		script: function () {
+			return ScriptAgent.scriptWithId(this.location.scriptId);
 		},
 
 		// check for a child call frame
