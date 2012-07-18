@@ -140,7 +140,8 @@ define(function (require, exports, module) {
 	}
 
 	function _onEventPause(res) {
-		var trace = new Trace.Trace("event", res.callFrames);
+		var eventName = res.data.eventName.substr(9);
+		var trace = new Trace.Trace("event", res.callFrames, eventName);
 		console.log(trace);
 		$exports.triggerHandler("eventTrace", trace);
 		_lastEvent = res;

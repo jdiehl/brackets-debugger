@@ -95,7 +95,7 @@ define(function (require, exports, module) {
 		summary.url      = ScriptAgent.scriptWithId(summary.scriptId).url;
 		summary.file     = summary.url.replace(/^.*\//, '');
 		if (trace.event) {
-			summary.event = trace.event.data.eventName.replace(/^listener:/, '');
+			summary.event = trace.event;
 		}
 
 		return summary;
