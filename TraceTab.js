@@ -75,13 +75,12 @@ define(function (require, exports, module) {
 	function onEventTrace(e, trace) {
 		var summary = _summarizeTrace(trace);
 		
-		var $event = $('<div class="event">')
+		var $event = $('<div class="fresh event">')
 			.data('trace', trace)
 			.append($('<div class="time">').text(_formatTime(trace.date)))
-			.append($('<div class="function">').text(summary.fn))
 			.append($('<div class="type">').text(summary.event))
-			.append($('<div class="file">').text(summary.file + ":" + (summary.line + 1)))
-			.prependTo($events);
+			.prependTo($events)
+			.removeClassDelayed("fresh");
 	}
 
 	function _summarizeTrace(trace) {
@@ -102,9 +101,7 @@ define(function (require, exports, module) {
 		return summary;
 	}
 
-	function _treeDataProvider(treeNode, callback) {
-		var parent = (treeNode === -1) ? currentEventTrace : treeNode.data('trace');
-		
+	function _traceChildrenForTree(parent, isRoot) {
 		var children = [];
 
 		for (var i = 0; i < parent.children.length; i++) {
@@ -115,11 +112,23 @@ define(function (require, exports, module) {
 				metadata: { trace: trace }
 			};
 			if (trace.children && trace.children.length > 0) {
-				child.state = "closed";
-				child.children = [];
+				if (isRoot) {
+					child.state = "open";
+					child.children = _traceChildrenForTree(trace, false);
+				} else {
+					child.state = "closed";
+					child.children = [];
+				}
 			}
 			children.push(child);
 		}
+
+		return children;
+	}
+
+	function _treeDataProvider(treeNode, callback) {
+		var parent = (treeNode === -1) ? { children: [currentEventTrace] } : treeNode.data('trace');
+		var children = _traceChildrenForTree(parent, treeNode === -1);
 		callback(children);
 	}
 	
@@ -190,7 +199,6 @@ define(function (require, exports, module) {
 
 	function onEventClicked(e) {
 		currentEventTrace = $(e.currentTarget).data('trace');
-		onTraceSelected(currentEventTrace);
 		setupTree($tree);
 	}
 
