@@ -95,20 +95,22 @@ define(function (require, exports, module) {
 	}
 
     /** Sets a line class and removes it after a delay */
-	function setTemporaryLineClass(editor, line, klass, delay) {
-		// Make sure no other line class or previous trace class is in the way
-		// Might also happen when the same tracepoint is hit twice quickly
-		editor._codeMirror.setLineClass(line);
-		// Set the trace class. This triggers an animation in CSS since the <pre> tag is regenerated
-		editor._codeMirror.setLineClass(line, "trace");
+	function setTemporaryLineClass(editor, line, className, delay) {
+		// get CodeMirror's line elements
+		// this is much faster than working with the codemirror api
+		var $codeLines = $(".CodeMirror-lines pre").not(".CodeMirror-cursor");
+
+		// add the class directly
+		var $line = $codeLines.eq(line);
+		$line.addClass(className);
+
 		// Stop any previous attempts of removing the line class
 		window.clearTimeout(traceLineTimeouts[line]);
-		// Remove the line class after one second
-		// This is necessary because the animation is triggered when the <pre> tag is rewritten
-		// This happens over and over again on cursor activity, or when the document is changed, etc.
+
+		// Remove the line class after the given delay
 		traceLineTimeouts[line] = window.setTimeout(function () {
+			$line.attr("class", null);
 			delete traceLineTimeouts[line];
-			editor._codeMirror.setLineClass(line);
 		}, delay);
 	}
 
@@ -219,7 +221,7 @@ define(function (require, exports, module) {
 			editor.setCursorPos(res.location.lineNumber, res.location.columnNumber);
 			editor._codeMirror.setLineClass(res.location.lineNumber, "paused");
 		} else {
-			setTemporaryLineClass(editor, res.location.lineNumber, "trace", 1000);
+			setTemporaryLineClass(editor, res.location.lineNumber, "trace", 5000);
 		}
 	}
 
