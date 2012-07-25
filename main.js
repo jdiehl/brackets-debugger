@@ -31,6 +31,8 @@ define(function (require, exports, module) {
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
+	var ENABLE_TRACEPOINTS = false;
+
 	// var Context    = require("Context");
 	var Debugger   = require("Debugger");
 	var Panel      = require("Panel");
@@ -222,7 +224,9 @@ define(function (require, exports, module) {
 	}
 
 	function onReload(event) {
-		TraceTab.reset();
+		if (ENABLE_TRACEPOINTS) {
+			TraceTab.reset();
+		}
 	}
 
 	function onResumed(event, res) {
@@ -234,7 +238,9 @@ define(function (require, exports, module) {
 	}
 
 	function onCurrentDocumentChange() {
-		parseDocument(DocumentManager.getCurrentDocument());
+		if (ENABLE_TRACEPOINTS) {
+			parseDocument(DocumentManager.getCurrentDocument());
+		}
 	}
 
 	function onToggleBreakEvents() {
@@ -253,14 +259,15 @@ define(function (require, exports, module) {
 		_loadLessFile("debugger.less", _extensionDirForBrowser());
 
 		// init modules
-		// Context.init();
 		Debugger.init();
-		Panel.init();
-		TraceTab.init();
-		ConsoleTab.init();
 		Breakpoint.init();
-		Parser.init();
-		Hover.init();
+		Panel.init();
+		ConsoleTab.init();
+		if (ENABLE_TRACEPOINTS) {
+			TraceTab.init();
+			Parser.init();
+			Hover.init();
+		}
 
 		// register for debugger events
 		var $Debugger = $(Debugger);
@@ -276,9 +283,11 @@ define(function (require, exports, module) {
 		// Right now this would be buggy, though: https://github.com/adobe/brackets/issues/1251
 		$("body").on("click", ".CodeMirror-gutter pre", onLineNumberClick);
 		
-		$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
-		$btnBreakEvents.click(onToggleBreakEvents);
-		$btnBreakEvents.insertBefore('#main-toolbar .buttons #toolbar-go-live');
+		if (ENABLE_TRACEPOINTS) {
+			$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
+			$btnBreakEvents.click(onToggleBreakEvents);
+			$btnBreakEvents.insertBefore('#main-toolbar .buttons #toolbar-go-live');
+		}
 
 		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
 		setTimeout(onCurrentDocumentChange, 0);
@@ -288,14 +297,16 @@ define(function (require, exports, module) {
 	function unload() {
 		$(DocumentManager).off("currentDocumentChange", onCurrentDocumentChange);
 
-		Hover.unload();
-		Parser.unload();
-		Breakpoint.unload();
-		TraceTab.unload();
+		if (ENABLE_TRACEPOINTS) {
+			Hover.unload();
+			Parser.unload();
+			TraceTab.unload();
+			$btnBreakEvents.remove();
+		}
 		ConsoleTab.unload();
 		Panel.unload();
+		Breakpoint.unload();
 		Debugger.unload();
-		// Context.unload();
 		$style.remove();
 		$("body").off("click", ".CodeMirror-gutter pre", onLineNumberClick);
 	}
