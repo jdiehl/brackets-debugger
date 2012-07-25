@@ -40,22 +40,12 @@ define(function (require, exports, module) {
 	
 	var $tab, $events, $node, $tree;
 
-	function onPaused(event, pause) {
-		var breakpoints = pause.breakpoints;
-		for (var i = 0; i < breakpoints.length; i++) {
-			var breakpoint = breakpoints[i];
-			if (! breakpoint.trace) { continue; }
-			var trace = breakpoint.trace[breakpoint.trace.length - 1];
-			// Todo: update tree if one of trace's parents is shown
-		}
-	}
-
 	function onNodeClick(event) {
 		event.preventDefault();
 		var node = $node.data("node");
-		if (!node) return;
+		var location = node ? node.location : 0;
 
-		GotoAgent.open(DOMAgent.url, node.location);
+		GotoAgent.open(DOMAgent.url, location);
 	}
 
 	function _twoDigits(number) {
@@ -80,16 +70,20 @@ define(function (require, exports, module) {
 	function onEventTrace(e, trace) {
 		var $event = $('<div class="fresh event">');
 		var eventName = trace.event;
-		if (trace.callFrames[0].this.className === "Window") eventName = "<window>" + eventName;
+		var className = trace.callFrames[0].this.className;
+		if (className === "Window" || className === "Document") {
+			eventName = "<" + className.toLowerCase() + ">" + eventName;
+		} else {
+			trace.resolveTargetNode().then(function (node) {
+				$eventDesc.text(_nodeDescription(node) + trace.event);
+			});
+		}
 		var $eventDesc = $('<div class="type">').text(eventName);
 		$event.data('trace', trace)
 			.append($('<div class="time">').text(_formatTime(trace.date)))
 			.append($eventDesc)
 			.prependTo($events)
 			.removeClassDelayed("fresh");
-		trace.resolveTargetNode().then(function (node) {
-			$eventDesc.text(_nodeDescription(node) + trace.event);
-		});
 	}
 
 	function _traceChildrenForTree(parent) {
@@ -120,14 +114,18 @@ define(function (require, exports, module) {
 	}
 
 	function setupNode($node) {
-		$node.hide();
 		$node.data("node", null);
-		if (currentEventTrace) {
+		$node.empty();
+
+		if (! currentEventTrace) { return; }
+
+		var className = currentEventTrace.callFrames[0].this.className;
+		if (className === "Window" || className === "Document") {
+			$node.text("<" + className.toLowerCase() + ">");
+		} else {
 			currentEventTrace.resolveTargetNode().then(function (node) {
-				if (node.name === "#document") return;
 				$node.text(_nodeDescription(node));
 				$node.data("node", node);
-				$node.show();
 			});
 		}
 	}
@@ -136,11 +134,6 @@ define(function (require, exports, module) {
 		$tree.empty();
 		
 		if (! currentEventTrace) { return; }
-
-		if (! currentEventTrace.children || currentEventTrace.children.length === 0) {
-			$tree.text("Empty");
-			return;
-		}
 
 		// Mostly taken from Brackets' ProjectManager.js
 		$tree.jstree({
@@ -184,7 +177,6 @@ define(function (require, exports, module) {
 		$tree = $('<div class="tree quiet-scrollbars">').appendTo($tab);
 		Panel.addTab(tabId, "Traces", $tab);
 
-		$(Debugger).on("paused", onPaused);
 		$(Debugger).on("eventTrace", onEventTrace);
 	}
 
