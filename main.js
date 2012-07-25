@@ -31,7 +31,7 @@ define(function (require, exports, module) {
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
-	var ENABLE_TRACEPOINTS = false;
+	var ENABLE_TRACEPOINTS = true;
 
 	// var Context    = require("Context");
 	var Debugger   = require("Debugger");
