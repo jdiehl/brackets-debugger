@@ -121,6 +121,12 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function _onToolbarButtonPressed(event) {
+		event.preventDefault();
+		var method = this.getAttribute("class").replace(/\s*/, '');
+		Debugger[method]();
+	}
+
 	// WebInspector Event: Console.messageAdded
 	function _onMessageAdded(res) {
 		// res = {message}
@@ -149,11 +155,11 @@ define(function (require, exports, module) {
 		Panel.addTab(tabId, "Console", $tab);
 		
 		// configure the toolbar
-		$btnPause    = Panel.addButton($('<button class="pause">').on("click", Debugger.pause));
-		$btnContinue = Panel.addButton($('<button class="resume">').on("click", Debugger.resume));
-		$btnStepOver = Panel.addButton($('<button class="stepOver">').on("click", Debugger.stepOver));
-		$btnStepInto = Panel.addButton($('<button class="stepInto">').on("click", Debugger.stepInto));
-		$btnStepOut  = Panel.addButton($('<button class="stepOut">').on("click", Debugger.stepOut));
+		$btnPause    = Panel.addButton($('<button class="pause">').on("mousedown", _onToolbarButtonPressed));
+		$btnContinue = Panel.addButton($('<button class="resume">').on("mousedown", _onToolbarButtonPressed));
+		$btnStepOver = Panel.addButton($('<button class="stepOver">').on("mousedown", _onToolbarButtonPressed));
+		$btnStepInto = Panel.addButton($('<button class="stepInto">').on("mousedown", _onToolbarButtonPressed));
+		$btnStepOut  = Panel.addButton($('<button class="stepOut">').on("mousedown", _onToolbarButtonPressed));
 
 		// configure the inspector
 		Inspector.on("connect", _onConnect);
