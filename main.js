@@ -45,6 +45,7 @@ define(function (require, exports, module) {
 	var $style;
 	var traceLineTimeouts = {};
 	var tracepointsForUrl = {};
+	var parsedDocuments = {};
 
 	/** Helper Functions *****************************************************/
 
@@ -153,12 +154,12 @@ define(function (require, exports, module) {
 	}
 
 	function parseDocument(doc) {
-		if (! doc || doc.extension !== 'js') { return; }
+		if (! doc || doc.extension !== 'js' || parsedDocuments[doc.url]) { return; }
 
 		removeFunctionTracepoints(doc.url);
 
 		// Loc: store locations as node.loc.(start|end).(line|column)
-		var tree  = Parser.parse(doc.getText(), { loc: true });
+		var tree  = parsedDocuments[doc.url] = Parser.parse(doc.getText(), { loc: true });
 		var cache = Parser.getCacheForUrl(doc.url);
 		
 		cache.functions = [];
