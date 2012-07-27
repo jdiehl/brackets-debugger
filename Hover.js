@@ -220,7 +220,7 @@ define(function (require, exports, module) {
 		
 		for (var i = 0; i < functions.length; i++) {
 			var candidate    = functions[i];
-			var start        = candidate.loc.start, end = candidate.loc.end;
+			var start        = candidate.start, end = candidate.end;
 			var startsBefore = start.line - 1 < cursor.line || (start.line - 1 === cursor.line && start.column < token.start);
 			var endsAfter    = end.line - 1 > cursor.line || (end.line - 1 === cursor.line && end.column > token.end);
 
@@ -286,21 +286,22 @@ define(function (require, exports, module) {
 		if (! token) { return; }
 
 		// Get the functions and variables of the current document or abort
-		var url       = DocumentManager.getCurrentDocument().url;
-		var details   = Parser.getCacheForUrl(url);
-		var variables = details.variables;
-		var functions = details.functions;
+		var doc       = DocumentManager.getCurrentDocument();
+		var index     = Parser.indexDocument(doc);
+		if (! index) { return; }
+		
+		var variables = index.variables;
+		var functions = index.functions;
 		if (! variables || ! functions) { return; }
 
+		var location = { line: cursor.line, column: token.start };
+
 		// Find the variable for this token, else abort
-		// CodeMirror lines are 0-based, Esprima lines are 1-based
-		var line     = cursor.line + 1;
-		var column   = token.start;
-		var variable = variables[line] ? variables[line][column] : null;
+		var variable = index.findVariableAtLocation(location);
 		if (! variable) { return; }
 
 		// Find the function surrounding the variable, else abort
-		var fn = findWrappingFunction(functions, cursor, token);
+		var fn = index.findFunctionAtLocation(location);
 		if (! fn) { return; }
 
 		var resolveBefore = resolveVariableInTracepoint(variable, fn.tracepoints[0]);

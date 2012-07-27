@@ -44,8 +44,6 @@ define(function (require, exports, module) {
 
 	var $style;
 	var traceLineTimeouts = {};
-	var tracepointsForUrl = {};
-	var parsedDocuments = {};
 
 	/** Helper Functions *****************************************************/
 
@@ -115,82 +113,6 @@ define(function (require, exports, module) {
 		}, delay);
 	}
 
-	function addFunctionTracepoints(url, node) {
-		var tracepoints = [];
-
-		// Name of the function
-		var name  = node.id ? node.id.name : "<anonymous>";
-		
-		// Now add two tracepoints, one at the beginning, one at the end of the function
-		for (var key in node.loc) {
-			var loc = node.loc[key];
-			var location = {
-				url: url,
-				// Esprima lines are 1-based
-				lineNumber: loc.line - 1,
-				// The end tracepoint needs be before }, not after, else it's hit right with the first one
-				columnNumber: key === 'end' ? loc.column - 1 : loc.column
-			};
-			var tracepoint = Debugger.setTracepoint(location, "function." + key);
-			tracepoints.push(tracepoint);
-		}
-		
-		// Remember the tracepoints
-		node.tracepoints = tracepoints;
-		if (! tracepointsForUrl[url]) {
-			tracepointsForUrl[url] = [];
-		}
-		tracepointsForUrl[url] = tracepointsForUrl[url].concat(tracepoints);
-	}
-
-	function removeFunctionTracepoints(url) {
-		// Remove the old tracepoints
-		if (tracepointsForUrl[url]) {
-			$.each(tracepointsForUrl[url], function (index, tracepoint) {
-				tracepoint.remove();
-			});
-			delete tracepointsForUrl[url];
-		}
-	}
-
-	function parseDocument(doc) {
-		if (! doc || doc.extension !== 'js' || parsedDocuments[doc.url]) { return; }
-
-		removeFunctionTracepoints(doc.url);
-
-		// Loc: store locations as node.loc.(start|end).(line|column)
-		var tree  = parsedDocuments[doc.url] = Parser.parse(doc.getText(), { loc: true });
-		var cache = Parser.getCacheForUrl(doc.url);
-		
-		cache.functions = [];
-		var onFunction = function (node) {
-			cache.functions.push(node);
-			addFunctionTracepoints(doc.url, node);
-		};
-
-		cache.variables = {};
-		var onVariable = function (node) {
-			if (node.type === 'ThisExpression') { node.name = "this"; }
-			else if (node.type === 'VariableDeclarator') { node = node.id; }
-			
-			var line   = node.loc.start.line;
-			var column = node.loc.start.column;
-			
-			if (! cache.variables[line]) { cache.variables[line] = {}; }
-			cache.variables[line][column] = node.name;
-		};
-
-		var handlers = {
-			FunctionDeclaration: onFunction,
-			FunctionExpression:  onFunction,
-			Identifier:          onVariable,
-			VariableDeclarator:  onVariable,
-			ThisExpression:      onVariable
-		};
-		
-		Parser.walk(tree, handlers);
-	}
-
 	/** Event Handlers *******************************************************/
 	
 	function onLineNumberClick(event) {
@@ -242,7 +164,7 @@ define(function (require, exports, module) {
 
 	function onCurrentDocumentChange() {
 		if (ENABLE_TRACEPOINTS) {
-			parseDocument(DocumentManager.getCurrentDocument());
+			Parser.indexDocument(DocumentManager.getCurrentDocument());
 		}
 	}
 
