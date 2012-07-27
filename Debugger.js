@@ -226,6 +226,7 @@ define(function (require, exports, module) {
 		for (var i = 0; i < events.length; i++) {
 			Inspector.DOMDebugger.removeEventListenerBreakpoint(events[i]);
 		}
+		Inspector.DOMDebugger.removeInstrumentationBreakpoint("timerFired");
 		$exports.off();
 		_onDisconnect();
 	}
