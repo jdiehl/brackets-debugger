@@ -254,6 +254,12 @@ define(function (require, exports, module) {
 	// init
 	var $btnBreakEvents;
 	function init() {
+		// enable experimental agents
+		var ld = brackets.getModule("LiveDevelopment/LiveDevelopment");
+		ld.enableAgent("script");
+		ld.enableAgent("highlight");
+		ld.enableAgent("goto");
+		ld.enableAgent("edit");
 
 		// load styles
 		_loadLessFile("debugger.less", _extensionDirForBrowser());
