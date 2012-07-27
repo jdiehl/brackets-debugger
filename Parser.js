@@ -35,7 +35,6 @@ define(function (require, exports, module) {
 	var $script;
 	var $exports = $(exports);
 	var documentIndexes = {};
-	var tracepointsForUrl = {};
 
 	/** Event Handlers *******************************************************/
 
@@ -134,11 +133,6 @@ define(function (require, exports, module) {
 			
 			// Remember the tracepoints
 			this.tracepoints = tracepoints;
-			
-			if (! tracepointsForUrl[url]) {
-				tracepointsForUrl[url] = [];
-			}
-			tracepointsForUrl[url] = tracepointsForUrl[url].concat(tracepoints);
 		}
 	};
 
@@ -151,8 +145,6 @@ define(function (require, exports, module) {
 
 		if (! tree) { return; }
 
-		removeFunctionTracepoints(doc.url);
-		
 		var index = documentIndexes[doc.url] = new Index(tree);
 	
 		var onFunction = function (node) {
@@ -217,16 +209,6 @@ define(function (require, exports, module) {
 					queue.push(value);
 				}
 			}
-		}
-	}
-
-	function removeFunctionTracepoints(url) {
-		// Remove the old tracepoints
-		if (tracepointsForUrl[url]) {
-			$.each(tracepointsForUrl[url], function (index, tracepoint) {
-				tracepoint.remove();
-			});
-			delete tracepointsForUrl[url];
 		}
 	}
 
