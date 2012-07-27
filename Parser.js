@@ -134,6 +134,7 @@ define(function (require, exports, module) {
 	function onScriptRequested(event, url) {
 		if (url.slice(0, 7) !== "file://") { return; }
 		if (url.indexOf("/lib/") !== -1) { return; }
+		if (url.slice(-7) === ".min.js") { return; }
 		if (documentIndexes[url]) { return; }
 
 		// Interrupt execution
