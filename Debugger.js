@@ -134,7 +134,10 @@ define(function (require, exports, module) {
 	}
 
 	function _onEventPause(res) {
-		var eventName = res.data.eventName.substr(9);
+		// E.g. listener:click, instrumentation:timerFired
+		var eventName = res.data.eventName;
+		var pos = eventName.indexOf(":");
+		if (pos !== -1) { eventName = eventName.slice(pos + 1); }
 		var trace = new Trace.Trace("event", res.callFrames, eventName);
 		$exports.triggerHandler("eventTrace", trace);
 		Inspector.Debugger.resume();
@@ -184,6 +187,7 @@ define(function (require, exports, module) {
 		for (var i = 0; i < events.length; i++) {
 			Inspector.DOMDebugger.setEventListenerBreakpoint(events[i]);
 		}
+		Inspector.DOMDebugger.setInstrumentationBreakpoint("timerFired");
 		// load the script agent if necessary
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.load();
