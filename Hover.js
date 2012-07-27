@@ -54,7 +54,7 @@ define(function (require, exports, module) {
 		if (value.type === "boolean")   { return value.value; }
 		if (value.type === "number")    { return value.value; }
 		if (value.type === "string")    { return JSON.stringify(value.value); }
-		if (value.type === "function")  { return value.description; }
+		if (value.type === "function")  { return describeObject(value, level); }
 		if (value.type === "object")    { return describeObject(value, level); }
 		if (value.description)          { return "<" + value.description + ">"; }
 		
@@ -83,12 +83,18 @@ define(function (require, exports, module) {
 			content.push(line);
 		}
 		content = content.join(",\n");
-		
+
 		var b = info.subtype === 'array' ? ["[", "]"] : ["{", "}"];
 		content = b[0] + (content.length > 1 ? "\n" + content + "\n" + indent : content) + b[1];
 
 		if (info.subtype !== 'array' && info.className && info.className !== "Object") {
 			content = "<" + info.className + "> " + content;
+		}
+
+		if (info.type === "function") {
+			var description = info.description.replace(/[\r\n]/g, " ").replace(/[\r\n\t ]*\{.*$/, " { ... }");
+			if (content !== "{}") { description += "\n" + indent + "Properties: " + content; }
+			content = description;
 		}
 		
 		return content;
@@ -180,13 +186,7 @@ define(function (require, exports, module) {
 		}
 		else {
 			cache[value.objectId] = value;
-			if (value.type === "function") {
-				Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
-					value.details = res.details;
-					result.resolve(value);
-				});
-			}
-			else if (depth < maxDepth) {
+			if (depth < maxDepth) {
 				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
 					var pending = [];
 					var resolved = value.value = {};
@@ -204,7 +204,15 @@ define(function (require, exports, module) {
 					}
 
 					$.when.apply(null, pending).done(function () {
-						result.resolve(value);
+						if (value.type === "function") {
+							Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
+								value.details = res.details;
+								result.resolve(value);
+							});
+						}
+						else {
+							result.resolve(value);
+						}
 					});
 				});
 			} else {
