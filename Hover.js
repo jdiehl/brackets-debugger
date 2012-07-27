@@ -287,7 +287,7 @@ define(function (require, exports, module) {
 
 		// Get the functions and variables of the current document or abort
 		var doc       = DocumentManager.getCurrentDocument();
-		var index     = Parser.indexDocument(doc);
+		var index     = Parser.indexForDocument(doc);
 		if (! index) { return; }
 		
 		var variables = index.variables;

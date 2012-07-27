@@ -164,7 +164,7 @@ define(function (require, exports, module) {
 
 	function onCurrentDocumentChange() {
 		if (ENABLE_TRACEPOINTS) {
-			Parser.indexDocument(DocumentManager.getCurrentDocument());
+			Parser.indexForDocument(DocumentManager.getCurrentDocument());
 		}
 	}
 

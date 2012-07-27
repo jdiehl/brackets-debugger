@@ -36,32 +36,17 @@ define(function (require, exports, module) {
 	var $exports = $(exports);
 	var documentIndexes = {};
 
-	/** Event Handlers *******************************************************/
+	/** Classes **************************************************************/
 
-	/** Actions **************************************************************/
+	function Index(doc, handlers) {
+		this.doc = doc;
 
-	function parseString(code, options) {
-		return esprima.parse(code, options);
-	}
-
-	function parseDocument(doc, options) {
-		if (! doc || doc.extension !== 'js') { return; }
-		return parseString(doc.getText(), options);
-	}
-
-	function locationIsBetween(location, start, end) {
-		// Does not start before location
-		if (! (start.line < location.line || (start.line === location.line && start.column < location.column))) { return false; }
-		// Starts before, but does not end after location
-		if (!   (end.line > location.line ||   (end.line === location.line &&   end.column > location.column))) { return false; }
-		// Location is between start and end
-		return true;
-	}
-
-	function Index(tree) {
-		this.tree = tree;
 		this.functions = [];
 		this.variables = {};
+		
+		// Loc: store locations as node.loc.(start|end).(line|column)
+		var tree = parseDocument(doc, { loc: true });
+		if (tree) { walkParseTree(tree, handlers, this); }
 	}
 
 	Index.prototype = {
@@ -136,49 +121,37 @@ define(function (require, exports, module) {
 		}
 	};
 
-	function indexDocument(doc) {
-		if (! doc) { return; }
-		if (documentIndexes[doc.url]) { return documentIndexes[doc.url]; }
+	/** Event Handlers *******************************************************/
 
-		// Loc: store locations as node.loc.(start|end).(line|column)
-		var tree = parseDocument(doc, { loc: true });
-
-		if (! tree) { return; }
-
-		var index = documentIndexes[doc.url] = new Index(tree);
-	
-		var onFunction = function (node) {
-			var func = new FunctionNode(node);
-			var parent = index.findFunctionAtLocation({ line: func.start.line, column: func.start.column });
-			if (parent) {
-				parent.addChild(func);
-			} else {
-				index.addFunction(func);
-			}
-			func.setTracepoints(doc.url);
-		};
-
-		index.variables = {};
-		var onVariable = function (node) {
-			if (node.type === 'ThisExpression') { node.name = "this"; }
-			else if (node.type === 'VariableDeclarator') { node = node.id; }
-			index.addVariable(node);
-		};
-
-		var handlers = {
-			FunctionDeclaration: onFunction,
-			FunctionExpression:  onFunction,
-			Identifier:          onVariable,
-			VariableDeclarator:  onVariable,
-			ThisExpression:      onVariable
-		};
-		
-		walkParseTree(tree, handlers);
-
-		return index;
+	function onFunctionParsed(node, index) {
+		var func = new FunctionNode(node);
+		var parent = index.findFunctionAtLocation({ line: func.start.line, column: func.start.column });
+		if (parent) {
+			parent.addChild(func);
+		} else {
+			index.addFunction(func);
+		}
+		func.setTracepoints(index.doc.url);
 	}
 
-	function walkParseTree(tree, handlers) {
+	function onVariableParsed(node, index) {
+		if (node.type === 'ThisExpression') { node.name = "this"; }
+		else if (node.type === 'VariableDeclarator') { node = node.id; }
+		index.addVariable(node);
+	}
+
+	/** Actions **************************************************************/
+
+	function parseString(code, options) {
+		return esprima.parse(code, options);
+	}
+
+	function parseDocument(doc, options) {
+		if (! doc || doc.extension !== 'js') { return; }
+		return parseString(doc.getText(), options);
+	}
+
+	function walkParseTree(tree, handlers, context) {
 		var ignore = {
 			id:       true,
 			type:     true,
@@ -196,7 +169,7 @@ define(function (require, exports, module) {
 			type    = current.type;
 			
 			if (type && handlers[type]) {
-				handlers[type](current);
+				handlers[type](current, context);
 			}
 
 			for (key in current) {
@@ -212,9 +185,34 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function indexForDocument(doc) {
+		if (! doc) { return; }
+		
+		if (! documentIndexes[doc.url]) {
+			documentIndexes[doc.url] = new Index(doc, {
+				FunctionDeclaration: onFunctionParsed,
+				FunctionExpression:  onFunctionParsed,
+				Identifier:          onVariableParsed,
+				VariableDeclarator:  onVariableParsed,
+				ThisExpression:      onVariableParsed
+			});
+		}
+		
+		return documentIndexes[doc.url];
+	}
+
 	/** Private Functions *******************************************************/
 
 	/** Helper Functions *******************************************************/
+
+	function locationIsBetween(location, start, end) {
+		// Does not start before location
+		if (! (start.line < location.line || (start.line === location.line && start.column < location.column))) { return false; }
+		// Starts before, but does not end after location
+		if (!   (end.line > location.line ||   (end.line === location.line &&   end.column > location.column))) { return false; }
+		// Location is between start and end
+		return true;
+	}
 
 	function loadEsprima() {
 		if (typeof esprima !== 'undefined') { return; }
@@ -240,6 +238,6 @@ define(function (require, exports, module) {
 
 	exports.parseString = parseString;
 	exports.parseDocument = parseDocument;
-	exports.indexDocument = indexDocument;
 	exports.walkParseTree = walkParseTree;
+	exports.indexForDocument = indexForDocument;
 });
