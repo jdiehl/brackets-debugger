@@ -58,15 +58,17 @@ define(function (require, exports, module) {
 		var doc = DocumentManager.getCurrentDocument();
 		if (doc && doc.url === url) {
 			return EditorManager.getCurrentFullEditor();
-		} else {
-			console.log("No editor for url", url);
 		}
 		return undefined;
 	}
 
 	function _editorForLocation(location) {
 		var url = location.url;
-		if (!url) url = ScriptAgent.scriptWithId(location.scriptId).url;
+		if (!url) {
+			var script = ScriptAgent.scriptWithId(location.scriptId);
+			if (! script) { return undefined; }
+			url = script.url;
+		}
 		return _editorForURL(url);
 	}
 	
@@ -162,12 +164,6 @@ define(function (require, exports, module) {
 		}
 	}
 
-	function onCurrentDocumentChange() {
-		if (ENABLE_TRACEPOINTS) {
-			Parser.indexForDocument(DocumentManager.getCurrentDocument());
-		}
-	}
-
 	function onToggleBreakEvents() {
 		var flag = !Debugger.breakOnTracepoints();
 		Debugger.setBreakOnTracepoints(flag);
@@ -219,15 +215,10 @@ define(function (require, exports, module) {
 			$btnBreakEvents.click(onToggleBreakEvents);
 			$btnBreakEvents.insertBefore('#main-toolbar .buttons #toolbar-go-live');
 		}
-
-		$(DocumentManager).on("currentDocumentChange", onCurrentDocumentChange);
-		setTimeout(onCurrentDocumentChange, 0);
 	}
 
 	// unload
 	function unload() {
-		$(DocumentManager).off("currentDocumentChange", onCurrentDocumentChange);
-
 		if (ENABLE_TRACEPOINTS) {
 			Hover.unload();
 			Parser.unload();

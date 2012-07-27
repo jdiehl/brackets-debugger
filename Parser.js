@@ -27,8 +27,7 @@
 define(function (require, exports, module) {
 	'use strict';
 
-	var NativeFileSystem = brackets.getModule("file/NativeFileSystem").NativeFileSystem,
-		FileUtils        = brackets.getModule("file/FileUtils");
+	var DocumentManager  = brackets.getModule("document/DocumentManager");
 
 	var Debugger = require("Debugger");
 
@@ -45,8 +44,13 @@ define(function (require, exports, module) {
 		this.variables = {};
 		
 		// Loc: store locations as node.loc.(start|end).(line|column)
-		var tree = parseDocument(doc, { loc: true });
-		if (tree) { walkParseTree(tree, handlers, this); }
+		try {
+			var tree = parseDocument(doc, { loc: true });
+			if (tree) { walkParseTree(tree, handlers, this); }
+		}
+		catch (e) {
+			console.log("Could not parse", doc.url, e);
+		}
 	}
 
 	Index.prototype = {
@@ -127,6 +131,24 @@ define(function (require, exports, module) {
 
 	/** Event Handlers *******************************************************/
 
+	function onScriptRequested(event, url) {
+		if (url.slice(0, 7) !== "file://") { return; }
+		if (url.indexOf("/lib/") !== -1) { return; }
+		if (documentIndexes[url]) { return; }
+
+		// Interrupt execution
+		var deferred = new $.Deferred();
+		Debugger.interrupt(deferred);
+		// Load document
+		DocumentManager.getDocumentForPath(url.slice(7)).done(function (doc) {
+			doc.url = doc.url || url;
+			// Parse the document and set tracepoints
+			createIndexForDocument(doc);
+			// Continue execution
+			deferred.resolve();
+		});
+	}
+	
 	function onFunctionParsed(node, index) {
 		var func = new FunctionNode(node);
 		var parent = index.findFunctionAtLocation({ line: func.start.line, column: func.start.column });
@@ -151,7 +173,7 @@ define(function (require, exports, module) {
 	}
 
 	function parseDocument(doc, options) {
-		if (! doc || doc.extension !== 'js') { return; }
+		if (! doc) { return; }
 		return parseString(doc.getText(), options);
 	}
 
@@ -189,19 +211,20 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function createIndexForDocument(doc) {
+		if (! doc || documentIndexes[doc.url]) { return; }
+		
+		documentIndexes[doc.url] = new Index(doc, {
+			FunctionDeclaration: onFunctionParsed,
+			FunctionExpression:  onFunctionParsed,
+			Identifier:          onVariableParsed,
+			VariableDeclarator:  onVariableParsed,
+			ThisExpression:      onVariableParsed
+		});
+	}
+
 	function indexForDocument(doc) {
 		if (! doc) { return; }
-		
-		if (! documentIndexes[doc.url]) {
-			documentIndexes[doc.url] = new Index(doc, {
-				FunctionDeclaration: onFunctionParsed,
-				FunctionExpression:  onFunctionParsed,
-				Identifier:          onVariableParsed,
-				VariableDeclarator:  onVariableParsed,
-				ThisExpression:      onVariableParsed
-			});
-		}
-		
 		return documentIndexes[doc.url];
 	}
 
@@ -228,20 +251,23 @@ define(function (require, exports, module) {
 	// init
 	function init() {
 		loadEsprima();
+		$(Debugger).on("scriptRequested", onScriptRequested);
 	}
 
 	function unload() {
+		$(Debugger).off("scriptRequested", onScriptRequested);
 		if ($script) {
 			$script.remove();
 		}
 	}
 
 	// public methods
-	exports.init = init;
+	exports.init   = init;
 	exports.unload = unload;
 
-	exports.parseString = parseString;
-	exports.parseDocument = parseDocument;
-	exports.walkParseTree = walkParseTree;
-	exports.indexForDocument = indexForDocument;
+	exports.parseString            = parseString;
+	exports.parseDocument          = parseDocument;
+	exports.walkParseTree          = walkParseTree;
+	exports.createIndexForDocument = createIndexForDocument;
+	exports.indexForDocument       = indexForDocument;
 });

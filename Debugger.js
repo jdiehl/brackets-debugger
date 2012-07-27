@@ -39,8 +39,33 @@ define(function (require, exports, module) {
 	var _paused;
 	var _breakOnTracepoints = false;
 
+	var _interruptions = 0;
+	var _interruptionResult;
+	var _pausedByInterruption = false;
 
 	/** Actions **************************************************************/
+
+	// pause execution until the deferred is complete
+	function interrupt(deferred) {
+		_interruptions++;
+		if (_interruptions === 1) {
+			_pausedByInterruption = true;
+			pause();
+		}
+		deferred.always(onInterruptionEnd);
+	}
+
+	// continue execution if all interruptions have ended
+	function onInterruptionEnd() {
+		_interruptions--;
+		// return if there are ongoing interruptions or if we did not pause during interruption
+		if (_interruptions === 0 || ! _interruptionResult) { return; }
+		
+		// now process the result of a pause during interruption
+		var result = _interruptionResult;
+		_interruptionResult = null;
+		_onPaused(result);
+	}
 
     // pause the debugger
 	function pause() {
@@ -147,6 +172,18 @@ define(function (require, exports, module) {
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
 
+		// defer handling of this pause until all interruptions are over
+		// by then the tracepoints should be set so the handlers below can find them
+		if (_pausedByInterruption) {
+			_pausedByInterruption = false;
+			// the last interruption will call _onPaused again
+			if (_interruptions) {
+				_interruptionResult = res;
+				return;
+			}
+			// the interruptions are already over, so handle this like any other pause
+		}
+
 		switch (res.reason) {
 		case "other":
 			return _onBreakpointPause(res.callFrames);
@@ -184,10 +221,12 @@ define(function (require, exports, module) {
 	// Inspector Event: we are connected to a live session
 	function _onConnect() {
 		Inspector.Debugger.enable();
+		
 		for (var i = 0; i < events.length; i++) {
 			Inspector.DOMDebugger.setEventListenerBreakpoint(events[i]);
 		}
 		Inspector.DOMDebugger.setInstrumentationBreakpoint("timerFired");
+		
 		// load the script agent if necessary
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.load();
@@ -206,6 +245,17 @@ define(function (require, exports, module) {
 		$exports.triggerHandler("reload");
 	}
 
+	function _onRequestWillBeSent(res) {
+		// res = {requestId, frameId, loaderId, documentURL, request, timestamp, initiator, redirectResponse}
+		var url = res.request.url;
+		// Remove querystring (?foo=bar...)
+		url = url.replace(/\?.*/, "");
+		// Get the extension
+		var extension = url.replace(/^.*\./, "");
+		if (extension !== "js") { return; }
+		$(exports).triggerHandler("scriptRequested", url);
+	}
+
 	/** Init Functions *******************************************************/
 	
 	// init
@@ -215,6 +265,8 @@ define(function (require, exports, module) {
 		Inspector.on("Debugger.paused", _onPaused);
 		Inspector.on("Debugger.resumed", _onResumed);
 		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		Inspector.on("Network.requestWillBeSent", _onRequestWillBeSent);
+
 	}
 
 	function unload() {
@@ -234,6 +286,7 @@ define(function (require, exports, module) {
 	// public methods
 	exports.init = init;
 	exports.unload = unload;
+	exports.interrupt = interrupt;
 	exports.pause = pause;
 	exports.resume = resume;
 	exports.stepOver = stepOver;

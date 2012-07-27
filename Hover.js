@@ -195,10 +195,6 @@ define(function (require, exports, module) {
 		var doc       = DocumentManager.getCurrentDocument();
 		var index     = Parser.indexForDocument(doc);
 		if (! index) { return; }
-		
-		var variables = index.variables;
-		var functions = index.functions;
-		if (! variables || ! functions) { return; }
 
 		var location = { line: cursor.line, column: token.start };
 
