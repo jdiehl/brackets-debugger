@@ -29,16 +29,14 @@ define(function (require, exports, module) {
 
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager   = brackets.getModule("editor/EditorManager");
-	var Inspector       = brackets.getModule("LiveDevelopment/Inspector/Inspector");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
 	var Parser = require("Parser");
 
 	// config
-	var tabWidth    = 2;
-	var maxChildren = 5;
-	var maxDepth    = 2;
+	var tabWidth             = 2;
+	var resolvingConstraints = { maxDepth: 2, maxChildren: 5 };
 
 	// state
 	var hover = { cursor: null, token: null };
@@ -139,89 +137,6 @@ define(function (require, exports, module) {
 		
 		return $popup;
 	}
-	
-	function resolveVariableInTracepoint(variable, tracepoint) {
-		var noGlobal = function (scope) { return scope.type !== "global"; };
-
-		var result = new $.Deferred();
-
-		var trace = tracepoint.trace[tracepoint.trace.length - 1];
-		if (! trace || trace.callFrames.length === 0) { return result.reject(); }
-		
-		var callFrameIndex = 0;
-		var callFrame = trace.callFrames[callFrameIndex];
-
-		if (variable === "this" && callFrame.this) {
-			resolveVariable(callFrame.this).done(result.resolve);
-		}
-		else {
-			trace.resolveCallFrame(callFrameIndex).done(function () {
-				var scopeChain = callFrame.scopeChain;
-				for (var i = 0; i < scopeChain.length; i++) {
-					var vars = scopeChain[i].resolved;
-					if (vars && vars[variable]) {
-						resolveVariable(vars[variable]).done(result.resolve);
-						return;
-					}
-				}
-				result.reject();
-			});
-		}
-
-		return result.promise();
-	}
-
-	function resolveVariable(value, cache, depth) {
-		if (! cache) { cache = {}; }
-		if (! depth) { depth = 0; }
-		
-		var result = new $.Deferred();
-
-		var ignore = !value || (value.type == "object" && (value.className == "Window" || value.className == "Document"));
-		if (ignore || ! value.objectId) {
-			result.resolve(value);
-		}
-		else if (cache[value.objectId]) {
-			result.resolve(cache[value.objectId]);
-		}
-		else {
-			cache[value.objectId] = value;
-			if (depth < maxDepth) {
-				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
-					var pending = [];
-					var resolved = value.value = {};
-
-					var used = 0;
-					for (var i = 0; i < res.result.length; i++) {
-						var info = res.result[i];
-						if (! info.enumerable) { continue; }
-						if (++used > maxChildren) {
-							resolved[""] = { special: "abbreviated" };
-							break;
-						}
-						resolved[info.name] = info.value;
-						pending.push(resolveVariable(info.value, cache, depth + 1));
-					}
-
-					$.when.apply(null, pending).done(function () {
-						if (value.type === "function") {
-							Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
-								value.details = res.details;
-								result.resolve(value);
-							});
-						}
-						else {
-							result.resolve(value);
-						}
-					});
-				});
-			} else {
-				result.resolve(value);
-			}
-		}
-
-		return result.promise();
-	}
 
 	/** Event Handlers *******************************************************/
 	
@@ -295,8 +210,8 @@ define(function (require, exports, module) {
 		var fn = index.findFunctionAtLocation(location);
 		if (! fn) { return; }
 
-		var resolveBefore = resolveVariableInTracepoint(variable, fn.tracepoints[0]);
-		var resolveAfter  = resolveVariableInTracepoint(variable, fn.tracepoints[1]);
+		var resolveBefore = fn.resolveVariableBefore(variable, resolvingConstraints);
+		var resolveAfter  = fn.resolveVariableAfter(variable, resolvingConstraints);
 		$.when(resolveBefore, resolveAfter).done(function (before, after) {
 			if (after.details && after.details.location) {
 				token.location = after.details.location;

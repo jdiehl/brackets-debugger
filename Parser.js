@@ -74,15 +74,17 @@ define(function (require, exports, module) {
 	};
 
 	function FunctionNode(node) {
-		this.node       = node;
-		this.name       = node.id ? node.id.name : null;
+		this.node  = node;
+
+		this.name  = node.id ? node.id.name : null;
+		this.start = node.loc.start;
+		this.end   = node.loc.end;
 		
-		this.start      = node.loc.start;
-		this.end        = node.loc.end;
 		this.start.line -= 1;
 		this.end.line   -= 1;
 		
-		this.children   = [];
+		this.children    = [];
+		this.tracepoints = {};
 	}
 
 	FunctionNode.prototype = {
@@ -100,8 +102,6 @@ define(function (require, exports, module) {
 		},
 
 		setTracepoints: function (url) {
-			var tracepoints = [];
-
 			// Now add two tracepoints, one at the beginning, one at the end of the function
 			var key, keys = ["start", "end"];
 			while ((key = keys.shift())) {
@@ -112,12 +112,16 @@ define(function (require, exports, module) {
 					// The end tracepoint needs be before }, not after, else it's hit right with the first one
 					columnNumber: key === 'end' ? loc.column - 1 : loc.column
 				};
-				var tracepoint = Debugger.setTracepoint(location, "function." + key);
-				tracepoints.push(tracepoint);
+				this.tracepoints[key] = Debugger.setTracepoint(location, "function." + key);
 			}
-			
-			// Remember the tracepoints
-			this.tracepoints = tracepoints;
+		},
+
+		resolveVariableBefore: function (variable, constraints) {
+			return this.tracepoints.start.resolveVariable(variable, constraints);
+		},
+
+		resolveVariableAfter: function (variable, constraints) {
+			return this.tracepoints.end.resolveVariable(variable, constraints);
 		}
 	};
 
