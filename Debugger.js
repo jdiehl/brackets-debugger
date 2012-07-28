@@ -50,7 +50,7 @@ define(function (require, exports, module) {
 		_interruptions++;
 		if (_interruptions === 1) {
 			_pausedByInterruption = true;
-			pause();
+			Inspector.Debugger.pause();
 		}
 		deferred.then(_onInterruptionEnd);
 	}
