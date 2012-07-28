@@ -52,19 +52,7 @@ define(function (require, exports, module) {
 			_pausedByInterruption = true;
 			pause();
 		}
-		deferred.always(onInterruptionEnd);
-	}
-
-	// continue execution if all interruptions have ended
-	function onInterruptionEnd() {
-		_interruptions--;
-		// return if there are ongoing interruptions or if we did not pause during interruption
-		if (_interruptions === 0 || ! _interruptionResult) { return; }
-		
-		// now process the result of a pause during interruption
-		var result = _interruptionResult;
-		_interruptionResult = null;
-		_onPaused(result);
+		deferred.then(_onInterruptionEnd);
 	}
 
     // pause the debugger
@@ -131,6 +119,18 @@ define(function (require, exports, module) {
 	}
 
 	/** Event Handlers *******************************************************/
+
+	// continue execution if all interruptions have ended
+	function _onInterruptionEnd() {
+		_interruptions--;
+		// return if there are ongoing interruptions or if we did not pause during interruption
+		if (_interruptions === 0 || ! _interruptionResult) { return; }
+		
+		// now process the result of a pause during interruption
+		var result = _interruptionResult;
+		_interruptionResult = null;
+		_onPaused(result);
+	}
 
 	function _onBreakpointPause(callFrames) {
 		// read the location from the top callframe
