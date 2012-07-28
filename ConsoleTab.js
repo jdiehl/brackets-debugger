@@ -155,11 +155,11 @@ define(function (require, exports, module) {
 		Panel.addTab(tabId, "Console", $tab);
 		
 		// configure the toolbar
-		$btnPause    = Panel.addButton($('<button class="pause">').on("mousedown", _onToolbarButtonPressed));
-		$btnContinue = Panel.addButton($('<button class="resume">').on("mousedown", _onToolbarButtonPressed));
-		$btnStepOver = Panel.addButton($('<button class="stepOver">').on("mousedown", _onToolbarButtonPressed));
-		$btnStepInto = Panel.addButton($('<button class="stepInto">').on("mousedown", _onToolbarButtonPressed));
-		$btnStepOut  = Panel.addButton($('<button class="stepOut">').on("mousedown", _onToolbarButtonPressed));
+		$btnPause    = Panel.addButton($('<button class="pause" title="Pause">').on("mousedown", _onToolbarButtonPressed));
+		$btnContinue = Panel.addButton($('<button class="resume" title="Resume">').on("mousedown", _onToolbarButtonPressed));
+		$btnStepOver = Panel.addButton($('<button class="stepOver" title="Step Over">').on("mousedown", _onToolbarButtonPressed));
+		$btnStepInto = Panel.addButton($('<button class="stepInto" title="Step Into">').on("mousedown", _onToolbarButtonPressed));
+		$btnStepOut  = Panel.addButton($('<button class="stepOut" title="Step Out">').on("mousedown", _onToolbarButtonPressed));
 
 		// configure the inspector
 		Inspector.on("connect", _onConnect);
