@@ -143,6 +143,7 @@ define(function (require, exports, module) {
 	function _onToolbarButtonPressed(event) {
 		event.preventDefault();
 		var method = this.getAttribute("class").replace(/\s*/, '');
+		if (method === "pause") { this.disabled = true; }
 		Debugger[method]();
 	}
 
