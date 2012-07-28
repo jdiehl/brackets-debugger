@@ -142,6 +142,13 @@ define(function (require, exports, module) {
 		}
 	}
 
+	// WebInspector Event: Console.messagesCleared
+	function _onMessagesCleared(res) {
+		// res = {}
+		_lastMessage = null;
+		$output.empty();
+	}
+
 	function _onConnect() {
 		Inspector.Console.enable();
 	}
@@ -165,6 +172,7 @@ define(function (require, exports, module) {
 		Inspector.on("connect", _onConnect);
 		Inspector.on("Console.messageAdded", _onMessageAdded);
 		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
+		Inspector.on("Console.messagesCleared", _onMessagesCleared);
 		if (Inspector.connected()) _onConnect();
 	}
 
@@ -172,6 +180,7 @@ define(function (require, exports, module) {
 		Inspector.off("connect", _onConnect);
 		Inspector.off("Console.messageAdded", _onMessageAdded);
 		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
+		Inspector.off("Console.messagesCleared", _onMessagesCleared);
 	}
 
 	// public methods
