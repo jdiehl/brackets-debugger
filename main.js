@@ -30,6 +30,7 @@ define(function (require, exports, module) {
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
 	var ENABLE_TRACEPOINTS = true;
 
@@ -63,13 +64,15 @@ define(function (require, exports, module) {
 	}
 
 	function _editorForLocation(location) {
+		return _editorForURL(_urlForLocation(location));
+	}
+
+	function _urlForLocation(location) {
 		var url = location.url;
-		if (!url) {
-			var script = ScriptAgent.scriptWithId(location.scriptId);
-			if (! script) { return undefined; }
-			url = script.url;
-		}
-		return _editorForURL(url);
+		if (url) { return url; }
+		var script = ScriptAgent.scriptWithId(location.scriptId);
+		if (! script) { return undefined; }
+		return script.url;
 	}
 	
 	/** Find this extension's directory relative to the brackets root */
@@ -139,13 +142,17 @@ define(function (require, exports, module) {
 	}
 
 	function onPaused(event, res) {
-		var editor = _editorForLocation(res.location);
-		if (! editor) { return; }
-
 		if (res.halt) {
-			editor.setCursorPos(res.location.lineNumber, res.location.columnNumber);
-			editor._codeMirror.setLineClass(res.location.lineNumber, "paused");
-		} else {
+			var url = _urlForLocation(res.location);
+			if (! url) { return; }
+			var trip = GotoAgent.open(url, { line: res.location.lineNumber, ch: res.location.columnNumber }, true);
+			if (! trip) { return; }
+			trip.done(function () {
+				EditorManager.getCurrentFullEditor()._codeMirror.setLineClass(res.location.lineNumber, "paused");
+			});
+		} else if (res.breakpoints) {
+			var editor = _editorForLocation(res.location);
+			if (! editor) { return; }
 			setTemporaryLineClass(editor, res.location.lineNumber, "trace", 5000);
 		}
 	}

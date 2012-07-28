@@ -43,6 +43,8 @@ define(function (require, exports, module) {
 	var _interruptionResult;
 	var _pausedByInterruption = false;
 
+	var _pausedByButton = false;
+
 	/** Actions **************************************************************/
 
 	// pause execution until the deferred is complete
@@ -57,11 +59,13 @@ define(function (require, exports, module) {
 
     // pause the debugger
 	function pause() {
+		_pausedByButton = true;
 		Inspector.Debugger.pause();
 	}
 
 	// resume the debugger
 	function resume() {
+		_pausedByButton = false;
 		Inspector.Debugger.resume();
 	}
 
@@ -132,64 +136,66 @@ define(function (require, exports, module) {
 		_onPaused(result);
 	}
 
-	function _onBreakpointPause(callFrames) {
-		// read the location from the top callframe
-		var loc = callFrames[0].location;
-
+	function _onBreakpointPause(res, info) {
 		// find the breakpoints at that location
-		var breakpoints = Breakpoint.findResolved(loc);
+		var breakpoints = info.breakpoints = Breakpoint.findResolved(info.location);
 
 		// determine whether to actually halt by asking all breakpoints
-		var halt = _breakOnTracepoints;
+		var halt = false;
 		var trace, b;
 		for (var i in breakpoints) {
 			b = breakpoints[i];
-			b.triggerPaused(callFrames);
-			if (b.haltOnPause) halt = true;
+			b.triggerPaused(info.callFrames);
+			if (_breakOnTracepoints || b.haltOnPause) halt = true;
 		}
 
-		// gather some info about this pause and send the "paused" event
-		_paused = { location: loc, callFrames: callFrames, breakpoints: breakpoints, halt: halt };
-		$exports.triggerHandler("paused", _paused);
-		
-		// halt (if so determined)
-		if (!halt) {
-			Inspector.Debugger.resume();
-		}
+		return halt;
 	}
 
-	function _onEventPause(res) {
+	function _onEventPause(res, info) {
 		// E.g. listener:click, instrumentation:timerFired
 		var eventName = res.data.eventName;
 		var pos = eventName.indexOf(":");
 		if (pos !== -1) { eventName = eventName.slice(pos + 1); }
+		
 		var trace = new Trace.Trace("event", res.callFrames, eventName);
 		$exports.triggerHandler("eventTrace", trace);
-		Inspector.Debugger.resume();
+
+		return false;
 	}
 
 	// WebInspector Event: Debugger.paused
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
 
-		// defer handling of this pause until all interruptions are over
-		// by then the tracepoints should be set so the handlers below can find them
+		// if this is the first pause since interruption
 		if (_pausedByInterruption) {
 			_pausedByInterruption = false;
-			// the last interruption will call _onPaused again
+			// if there are still unfinished interruptions
 			if (_interruptions) {
+				// defer handling of this pause until all interruptions are over
+				// by then the tracepoints should be set so the handlers below can find them
+				// the last interruption will call _onPaused again with res = _interruptionResult
 				_interruptionResult = res;
 				return;
 			}
 			// the interruptions are already over, so handle this like any other pause
 		}
 
-		switch (res.reason) {
-		case "other":
-			return _onBreakpointPause(res.callFrames);
-		case "EventListener":
-			return _onEventPause(res);
-		}
+		// gather some info about this pause
+		_paused = { location: res.callFrames[0].location, callFrames: res.callFrames };
+
+		// determine whether to halt
+		var handler;
+		if (res.reason === "other")              { handler = _onBreakpointPause; }
+		else if (res.reason === "EventListener") { handler = _onEventPause; }
+		_paused.halt = (handler ? handler(res, _paused) : false) || _pausedByButton;
+
+		// trigger the "paused" event
+		$exports.triggerHandler("paused", _paused);
+		
+		// resume if necessary
+		if (! _paused.halt) { Inspector.Debugger.resume(); }
 	}
 
 	// WebInspector Event: Debugger.resumed
