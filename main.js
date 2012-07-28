@@ -99,7 +99,7 @@ define(function (require, exports, module) {
 	function setTemporaryLineClass(editor, line, className, delay) {
 		// get CodeMirror's line elements
 		// this is much faster than working with the codemirror api
-		var $codeLines = $(".CodeMirror-lines pre").not(".CodeMirror-cursor");
+		var $codeLines = $(".CodeMirror-lines > div > div:last > pre");
 
 		// add the class directly
 		var $line = $codeLines.eq(line);
