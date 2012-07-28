@@ -43,7 +43,7 @@ define(function (require, exports, module) {
 	var _interruptionResult;
 	var _pausedByInterruption = false;
 
-	var _pausedByButton = false;
+	var _stayPaused = false;
 
 	/** Actions **************************************************************/
 
@@ -59,13 +59,13 @@ define(function (require, exports, module) {
 
     // pause the debugger
 	function pause() {
-		_pausedByButton = true;
+		_stayPaused = true;
 		Inspector.Debugger.pause();
 	}
 
 	// resume the debugger
 	function resume() {
-		_pausedByButton = false;
+		_stayPaused = false;
 		Inspector.Debugger.resume();
 	}
 
@@ -189,7 +189,9 @@ define(function (require, exports, module) {
 		var handler;
 		if (res.reason === "other")              { handler = _onBreakpointPause; }
 		else if (res.reason === "EventListener") { handler = _onEventPause; }
-		_paused.halt = (handler ? handler(res, _paused) : false) || _pausedByButton;
+		_paused.halt = (handler ? handler(res, _paused) : false) || _stayPaused;
+		// Stepping triggers resume, then pause, and we need to step again then
+		if (! _stayPaused) { _stayPaused = _paused.halt; }
 
 		// trigger the "paused" event
 		$exports.triggerHandler("paused", _paused);
@@ -204,7 +206,7 @@ define(function (require, exports, module) {
 
 		// send the "resumed" event with the info from the pause
 		if (_paused) {
-			$exports.triggerHandler("resumed", _paused);
+			$exports.triggerHandler("resumed", [_paused, _stayPaused]);
 			_paused = undefined;
 		}
 	}
