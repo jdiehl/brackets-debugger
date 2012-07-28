@@ -128,9 +128,7 @@ define(function (require, exports, module) {
 	}
 
 	function _onOutputContextMenu(event) {
-		console.log("Context menu");
 		var menu = Menus.getContextMenu("editor-context-menu");
-		console.log(outputContextMenu);
 		outputContextMenu.open(event);
 	}
 
