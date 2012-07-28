@@ -127,6 +127,14 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function _updateButtonsForPauseState(paused) {
+		$btnPause.attr("disabled", paused);
+		$btnContinue.attr("disabled", !paused);
+		$btnStepOver.attr("disabled", !paused);
+		$btnStepInto.attr("disabled", !paused);
+		$btnStepOut.attr("disabled", !paused);
+	}
+
 	function _onOutputContextMenu(event) {
 		var menu = Menus.getContextMenu("editor-context-menu");
 		outputContextMenu.open(event);
@@ -160,7 +168,19 @@ define(function (require, exports, module) {
 		$output.empty();
 	}
 
+	function _onPaused(event, info) {
+		if (! info.halt) { return; }
+		_updateButtonsForPauseState(true);
+	}
+
+	function _onResumed(event, info, stayPaused) {
+		if (! info.halt || stayPaused) { return; }
+		_updateButtonsForPauseState(false);
+	}
+
 	function _onConnect() {
+		// assume we're not paused
+		_updateButtonsForPauseState(false);
 		Inspector.Console.enable();
 	}
 
@@ -184,6 +204,11 @@ define(function (require, exports, module) {
 		$btnStepInto = Panel.addButton($('<button class="stepInto" title="Step Into">').on("mousedown", _onToolbarButtonPressed));
 		$btnStepOut  = Panel.addButton($('<button class="stepOut" title="Step Out">').on("mousedown", _onToolbarButtonPressed));
 
+		// register for debugger events
+		var $Debugger = $(Debugger);
+		$Debugger.on("paused", _onPaused);
+		$Debugger.on("resumed", _onResumed);
+		
 		// configure the inspector
 		Inspector.on("connect", _onConnect);
 		Inspector.on("Console.messageAdded", _onMessageAdded);
@@ -193,6 +218,11 @@ define(function (require, exports, module) {
 	}
 
 	function unload() {
+		// unregister debugger events
+		var $Debugger = $(Debugger);
+		$Debugger.off("paused", _onPaused);
+		$Debugger.off("resumed", _onResumed);
+		
 		Inspector.off("connect", _onConnect);
 		Inspector.off("Console.messageAdded", _onMessageAdded);
 		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
