@@ -32,7 +32,7 @@ define(function (require, exports, module) {
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
-	var ENABLE_TRACEPOINTS = true;
+	var ENABLE_TRACEPOINTS = false;
 
 	// var Context    = require("Context");
 	var Debugger   = require("Debugger");
