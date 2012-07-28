@@ -27,17 +27,23 @@
 define(function (require, exports, module) {
 	'use strict';
 
-	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
-	var EditorManager = brackets.getModule("editor/EditorManager");
+	var Inspector      = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var EditorManager  = brackets.getModule("editor/EditorManager");
+	var CommandManager = brackets.getModule("command/CommandManager");
+	var Menus          = brackets.getModule("command/Menus");
 
 	var Debugger = require("Debugger");
-	var Panel = require("Panel");
+	var Panel    = require("Panel");
 
-	var tabId = "jdiehl-debugger-console";
-	
+	var tabId                  = "jdiehl-debugger-console";
+	var outputContextMenuId    = "jdiehl-debugger-console-output";
+	var outputClearCommandName = "Clear Console";
+	var outputClearCommandId   = "jdiehl.debugger.console.clear";
+
 	var $tab, $output, $prompt;
 	var $btnPause, $btnContinue, $btnStepOver, $btnStepInto, $btnStepOut;
 	var _lastMessage;
+	var outputContextMenu;
 
 	// add a message
 	function _add(level, message, wasThrown) {
@@ -121,6 +127,13 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function _onOutputContextMenu(event) {
+		console.log("Context menu");
+		var menu = Menus.getContextMenu("editor-context-menu");
+		console.log(outputContextMenu);
+		outputContextMenu.open(event);
+	}
+
 	function _onToolbarButtonPressed(event) {
 		event.preventDefault();
 		var method = this.getAttribute("class").replace(/\s*/, '');
@@ -155,9 +168,14 @@ define(function (require, exports, module) {
 
 	// init
 	function init() {
+		// Output context menu with entry "Clear Console"
+		CommandManager.register(outputClearCommandName, outputClearCommandId, Inspector.Console.clearMessages);
+        outputContextMenu = Menus.registerContextMenu(outputContextMenuId);
+        outputContextMenu.addMenuItem(outputClearCommandId);
+
 		// configure the tab content
 		$tab    = $('<div class="table-container">').attr('id', tabId);
-		$output = $('<div class="output">').appendTo($tab);
+		$output = $('<div class="output">').on("contextmenu", _onOutputContextMenu).appendTo($tab);
 		$prompt = $('<input class="prompt">').on("keyup", _onPromptKeypress).appendTo($tab);
 		Panel.addTab(tabId, "Console", $tab);
 		
