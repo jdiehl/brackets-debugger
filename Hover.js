@@ -35,7 +35,7 @@ define(function (require, exports, module) {
 	var Parser = require("Parser");
 
 	// config
-	var tabWidth             = 2;
+	var tabWidth             = 4;
 	var resolvingConstraints = { maxDepth: 2, maxChildren: 5 };
 
 	// state
@@ -109,17 +109,15 @@ define(function (require, exports, module) {
 		removePopup();
 		
 		// Create the popup with an ID for CSS
-		var $popup = $("<div>").attr("id", "jdiehl-debugger-variable-value");
+		var $popup = $("<div>").appendTo("body").attr("id", "jdiehl-debugger-variable-value");
 		// Make the text movable independent of the rest (the arrow) by wrapping it in another div
 		var $text  = $("<div>").text(value).appendTo($popup);
-		// Append the popup to a node compatible with "local" coordinates as used below
-		$("> div:last", cmLinesNode).append($popup);
 
 		// Prevent a weird effect when a variable is in the first column and the cursor is left of it
 		if (toCol === 0) { toCol = 1; }
 		// Get the pixel coordinates of the left and right end of the token
-		var left   = cm.charCoords({ line: line, ch: fromCol }, "local");
-		var right  = cm.charCoords({ line: line, ch: toCol   }, "local");
+		var left   = cm.charCoords({ line: line, ch: fromCol }, "page");
+		var right  = cm.charCoords({ line: line, ch: toCol   }, "page");
 		// Right shift to the middle of the token
 		left.x += Math.round((right.x - left.x) / 2);
 		// Left shift so that the middle of the text is at the middle of the token
