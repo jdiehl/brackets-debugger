@@ -250,6 +250,7 @@ define(function (require, exports, module) {
 
 	// Inspector Event: Debugger.globalObjectCleared
 	function _onGlobalObjectCleared() {
+		_stayPaused = false;
 		$exports.triggerHandler("reload");
 	}
 

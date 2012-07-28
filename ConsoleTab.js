@@ -178,9 +178,12 @@ define(function (require, exports, module) {
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onConnect() {
+	function _onReload() {
 		// assume we're not paused
 		_updateButtonsForPauseState(false);
+	}
+
+	function _onConnect() {
 		Inspector.Console.enable();
 	}
 
@@ -208,6 +211,7 @@ define(function (require, exports, module) {
 		var $Debugger = $(Debugger);
 		$Debugger.on("paused", _onPaused);
 		$Debugger.on("resumed", _onResumed);
+		$Debugger.on("reload", _onReload);
 		
 		// configure the inspector
 		Inspector.on("connect", _onConnect);
