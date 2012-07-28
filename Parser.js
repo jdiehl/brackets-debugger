@@ -74,6 +74,17 @@ define(function (require, exports, module) {
 		
 		findVariableAtLocation: function (location) {
 			return this.variables[location.line] ? this.variables[location.line][location.column] : null;
+		},
+
+		setTracepoints: function () {
+			var results = [];
+			var queue = [].concat(this.functions);
+			var func;
+			while ((func = queue.shift())) {
+				queue = queue.concat(func.children);
+				results.push(func.setTracepoints(this.doc.url));
+			}
+			return $.when.apply(null, results);
 		}
 	};
 
@@ -105,19 +116,23 @@ define(function (require, exports, module) {
 			return this;
 		},
 
+		// Add two tracepoints, one at the beginning, one at the end of the function
 		setTracepoints: function (url) {
-			// Now add two tracepoints, one at the beginning, one at the end of the function
+			var result = new $.Deferred();
+			
 			var key, keys = ["start", "end"];
+			var remaining = keys.length;
+			function onTracepointSet() { if (! --remaining) { result.resolve(); } }
+			
 			while ((key = keys.shift())) {
-				var loc = this[key];
-				var location = {
-					url: url,
-					lineNumber: loc.line,
-					// The end tracepoint needs be before }, not after, else it's hit right with the first one
-					columnNumber: key === 'end' ? loc.column - 1 : loc.column
-				};
-				this.tracepoints[key] = Debugger.setTracepoint(location, "function." + key);
+				var location = { url: url, lineNumber: this[key].line, columnNumber: this[key].column };
+				// The end tracepoint needs be before }, not after, else it's hit right with the first one
+				if (key === 'end') { location.columnNumber--; }
+				var tracepoint = this.tracepoints[key] = Debugger.setTracepoint(location, "function." + key);
+				$(tracepoint).one("set", onTracepointSet);
 			}
+
+			return result;
 		},
 
 		resolveVariableBefore: function (variable, constraints) {
@@ -143,10 +158,10 @@ define(function (require, exports, module) {
 		// Load document
 		DocumentManager.getDocumentForPath(url.slice(7)).done(function (doc) {
 			doc.url = doc.url || url;
-			// Parse the document and set tracepoints
-			createIndexForDocument(doc);
-			// Continue execution
-			deferred.resolve();
+			// Parse the document
+			var index = createIndexForDocument(doc);
+			// Set tracepoints, then continue execution
+			index.setTracepoints().then(deferred.resolve);
 		});
 	}
 	
@@ -158,7 +173,6 @@ define(function (require, exports, module) {
 		} else {
 			index.addFunction(func);
 		}
-		func.setTracepoints(index.doc.url);
 	}
 
 	function onVariableParsed(node, index) {
@@ -191,12 +205,15 @@ define(function (require, exports, module) {
 		var queue = [tree];
 		var current, type, abstractType, key, value, i;
 
+		var results = [];
+
 		while (queue.length) {
 			current = queue.shift();
 			type    = current.type;
 			
 			if (type && handlers[type]) {
-				handlers[type](current, context);
+				var result = handlers[type](current, context);
+				if (result) { results.push(result); }
 			}
 
 			for (key in current) {
@@ -210,12 +227,14 @@ define(function (require, exports, module) {
 				}
 			}
 		}
+
+		return $.when.apply(null, results).promise();
 	}
 
 	function createIndexForDocument(doc) {
 		if (! doc || documentIndexes[doc.url]) { return; }
-		
-		documentIndexes[doc.url] = new Index(doc, {
+
+		return documentIndexes[doc.url] = new Index(doc, {
 			FunctionDeclaration: onFunctionParsed,
 			FunctionExpression:  onFunctionParsed,
 			Identifier:          onVariableParsed,
