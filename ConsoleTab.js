@@ -214,10 +214,10 @@ define(function (require, exports, module) {
 		$Debugger.on("reload", _onReload);
 		
 		// configure the inspector
-		Inspector.on("connect", _onConnect);
 		Inspector.on("Console.messageAdded", _onMessageAdded);
 		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
 		Inspector.on("Console.messagesCleared", _onMessagesCleared);
+		Inspector.on("connect", _onConnect);
 		if (Inspector.connected()) _onConnect();
 	}
 
@@ -226,11 +226,12 @@ define(function (require, exports, module) {
 		var $Debugger = $(Debugger);
 		$Debugger.off("paused", _onPaused);
 		$Debugger.off("resumed", _onResumed);
+		$Debugger.off("reload", _onReload);
 		
-		Inspector.off("connect", _onConnect);
 		Inspector.off("Console.messageAdded", _onMessageAdded);
 		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
 		Inspector.off("Console.messagesCleared", _onMessagesCleared);
+		Inspector.off("connect", _onConnect);
 	}
 
 	// public methods
