@@ -44,6 +44,7 @@ define(function (require, exports, module) {
 	var _pausedByInterruption = false;
 
 	var _stayPaused = false;
+	var _pauseAfterReload = false;
 
 	/** Actions **************************************************************/
 
@@ -60,6 +61,8 @@ define(function (require, exports, module) {
     // pause the debugger
 	function pause() {
 		_stayPaused = true;
+		// if there is no pause before the next reload, press pause again
+		_pauseAfterReload = true;
 		Inspector.Debugger.pause();
 	}
 
@@ -182,6 +185,9 @@ define(function (require, exports, module) {
 			// the interruptions are already over, so handle this like any other pause
 		}
 
+		// pressing the pause button has succeeded, so we don't need to do it again after a reload
+		_pauseAfterReload = false;
+		
 		// gather some info about this pause
 		_paused = { location: res.callFrames[0].location, callFrames: res.callFrames };
 
@@ -250,7 +256,10 @@ define(function (require, exports, module) {
 
 	// Inspector Event: Debugger.globalObjectCleared
 	function _onGlobalObjectCleared() {
+		// Normally, Chrome is not paused after a reload, so the next pause will be for breakpoints/events
 		_stayPaused = false;
+		// After pressing the pause button the page was reloaded before a pause occured: pause now
+		if (_pauseAfterReload) { pause(); }
 		$exports.triggerHandler("reload");
 	}
 
