@@ -274,6 +274,22 @@ define(function (require, exports, module) {
 		$(exports).triggerHandler("scriptRequested", url);
 	}
 
+	function _onSetScriptSource(res) {
+		if (res.callFrames && res.callFrames.length) {
+			// todo: update the callframes of the current breakpoint
+		}
+
+		// compute the character change for each change (3 entries in the chunks array)
+		var i, chunks = res.result.textual_diff.chunks;
+		var diff = {};
+		for (i = 0; i + 2 < chunks.length; i += 3) {
+			diff[chunks[i]] = chunks[i + 2] - chunks[i + 1];
+		}
+		
+		// todo: fix the breakpoints
+		// we must somehow convert the offset stored in diff to lines and columns
+	}
+
 	/** Init Functions *******************************************************/
 	
 	// init
@@ -284,7 +300,7 @@ define(function (require, exports, module) {
 		Inspector.on("Debugger.resumed", _onResumed);
 		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 		Inspector.on("Network.requestWillBeSent", _onRequestWillBeSent);
-
+		Inspector.on("ScriptAgent.setScriptSource", _onSetScriptSource);
 	}
 
 	function unload() {

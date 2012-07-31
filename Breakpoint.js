@@ -75,6 +75,15 @@ define(function (require, exports, module) {
 			});
 		},
 
+		// update the location of the breakpoint as an effect of a source code edit
+		// this function is used to keep breakpoints in sync with the debugger
+		// this function si not used to update the location of the breakpoint in the debugger
+		updateLocation: function (lineNumber, columnNumber) {
+			this.location.lineNumber = lineNumber;
+			this.location.columnNumber = columnNumber;
+			$(this).triggerHandler("move", { breakpoint: this, location: location });
+		},
+
 		// remove the breakpoint in the Inspector
 		remove: function () {
 			delete _breakpoints[this.number];
