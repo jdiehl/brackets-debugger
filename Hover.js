@@ -63,6 +63,8 @@ define(function (require, exports, module) {
 	function describeObject(info, level) {
 		if (! info.value) { return "<" + info.description + ">"; }
 
+		if (info.subtype === "node") { return describeHtmlNode(info, level); }
+
 		var i, indentUnit = "", indent = "";
 		for (i = 0; i < tabWidth; i++) { indentUnit += " "; }
 		for (i = 0; i < level;    i++) { indent     += indentUnit; }
@@ -96,6 +98,33 @@ define(function (require, exports, module) {
 		}
 		
 		return content;
+	}
+
+	function describeHtmlNode(info, level) {
+		var value = info.value;
+
+		var html = "";
+
+		if (value.id) {
+			html += ' id="' + value.id.value + '"';
+		}
+		if (value.className) {
+			html += ' class="' + value.className.value + '"';
+		}
+
+		// The attributes array doesn't contain the values
+		// var attributes = value.attributes.value;
+		// console.log("attrs", attributes);
+		// for (var i = 0; i < attributes.length.value; i++) {
+		// 	var attr = attributes[i].value;
+		// 	console.log("attr", attr, attr.nodeName.value);
+
+		// 	//html += " " + attr.nodeName.value + "=" + attr.nodeValue.value;
+		// }
+
+		html = "<" + value.nodeName.value.toLowerCase() + html + ">";
+
+		return html;
 	}
 
 	function removePopup() {
