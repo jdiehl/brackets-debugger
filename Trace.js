@@ -65,7 +65,7 @@ define(function (require, exports, module) {
 
 		// connect the trace to the last parent
 		if (trace.type !== "event" && _lastParent) {
-			_lastParent.children.push(trace);
+			_lastParent.addChild(trace);
 			trace.parent = _lastParent;
 		}
 
@@ -96,6 +96,11 @@ define(function (require, exports, module) {
 	}
 
 	Trace.prototype = {
+		addChild: function (trace) {
+			this.children.push(trace);
+			$(this).triggerHandler("change", this);
+		},
+
 		findParent: function (trace) {
 			if (trace.type === event) return trace;
 

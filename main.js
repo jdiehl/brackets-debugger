@@ -129,10 +129,16 @@ define(function (require, exports, module) {
 		Debugger.toggleBreakpoint(location);
 	}
 
-	function onSetBreakpoint(event, location) {
-		var editor = _editorForLocation(location);
+	function onSetBreakpoint(event, res) {
+		// res = {breakpoint, location}
+		var editor = _editorForLocation(res.location);
 		if (! editor) return;
-		editor._codeMirror.setMarker(location.lineNumber, null, "breakpoint");
+		if (res.breakpoint.haltOnPause) {
+			editor._codeMirror.setMarker(res.location.lineNumber, null, "breakpoint");
+		}
+
+		// compute and attach the file offset of the breakpoint
+		res.location.offset = editor.indexFromPos({ line: res.location.lineNumber, ch: res.location.columnNumber });
 	}
 
 	function onRemoveBreakpoint(event, location) {

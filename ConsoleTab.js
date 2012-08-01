@@ -60,8 +60,8 @@ define(function (require, exports, module) {
 
 		// response
 		case "in":
-			if (message.text) {
-				$msg.text(message.text);
+			if (message.value) {
+				$msg.text(message.value);
 			} else if (message.description) {
 				$msg.text(message.description);
 			} else {

@@ -90,21 +90,26 @@ define(function (require, exports, module) {
 
 	function setTracepoint(location, type) {
 		var breakpoint = new Breakpoint.Breakpoint(location, undefined, type);
+		$(breakpoint)
+				.on("resolve", _onResolveBreakpoint);
 		breakpoint.set();
 		return breakpoint;
 	}
 
 	// toggle a breakpoint
 	function toggleBreakpoint(location) {
-		var breakpoint = Breakpoint.find(location);
-		if (!breakpoint) {
-			breakpoint = new Breakpoint.Breakpoint(location);
-			$(breakpoint)
+		var breakpoints = Breakpoint.findResolved(location);
+		var b;
+		if (breakpoints.length === 0) {
+			b = new Breakpoint.Breakpoint(location);
+			$(b)
 				.on("resolve", _onResolveBreakpoint)
 				.on("remove", _onRemoveBreakpoint);
+			breakpoints.push(b);
 		}
-		breakpoint.toggle();
-		return breakpoint;
+		for (var i in breakpoints) {
+			breakpoints[i].toggle();
+		}
 	}
 
 	// evaluate an expression in the active call frame
@@ -220,8 +225,8 @@ define(function (require, exports, module) {
 
 	// Breakpoint Event: breakpoint resolved
 	function _onResolveBreakpoint(event, res) {
-		res.location.url = ScriptAgent.scriptWithId(res.location.scriptId).url;
-		$exports.triggerHandler('setBreakpoint', res.location);
+		// res = {breakpoint, location}
+		$exports.triggerHandler('setBreakpoint', res);
 	}
 
 	// Breakpoint Event: breakpoint removed
