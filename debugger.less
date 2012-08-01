@@ -29,12 +29,8 @@
 	}
 }
 .CodeMirror-lines {
-	.paused, .trace {
-		border-radius: 50px;
-		// box-shadow: 0 0 2px #fe9, 0 0 4px #fe9, 0 0 6px #fe9;
-		background-color: #fff7cc;
-	}
 	.paused {
+		background-color: rgba(0, 0, 0, 0.08);
 		&:before {
 			content: "";
 			display: block;
@@ -48,22 +44,10 @@
 		}
 	} 
 	.trace {
-	   -webkit-animation: trace 1s ease-out;
+		background-color: rgba(255, 255, 0, 0.2);
 	}
 }
   
-/*
-@-webkit-keyframes trace {
-	from {
-		background-color: #fe9;
-	}
-	to {
-		background: inherit;
-		box-shadow: none;
-	}
-}
-*/
-
 #jdiehl-debugger-panel {
 	.toolbar {
 		button {
