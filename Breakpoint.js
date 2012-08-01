@@ -37,8 +37,19 @@ define(function (require, exports, module) {
 
 	var $exports = $(exports);
 
+	function _lineLengths(source) {
+		var lines = [];
+		var index = source.search("\n");
+		while (index >= 0) {
+			lines.push(index + 1);
+			source = source.substr(index + 1);
+			index = source.search("\n");
+		}
+		lines.push(source.length);
+		return lines;
+	}
+
 	function _updateOffset(location, diff, lines) {
-		console.log("   " + location.lineNumber + ":" + location.columnNumber + " (" + location.offset + ")");
 		var i, offset = location.offset;
 		for (i in diff) {
 			if (i > offset) {
@@ -60,7 +71,6 @@ define(function (require, exports, module) {
 					break;
 				}
 			}
-			console.log("-> " + location.lineNumber + ":" + location.columnNumber + " (" + location.offset + ")");
 		}
 	}
 
@@ -319,15 +329,7 @@ define(function (require, exports, module) {
 
 	function _onSetScripSource(res) {
 		// res = {callFrames, result, script, scriptSource, diff}
-		var lines = [];
-		var source = res.scriptSource;
-		var index = source.search("\n");
-		while (index >= 0) {
-			lines.push(index + 1);
-			source = source.substr(index + 1);
-			index = source.search("\n");
-		}
-		lines.push(source.length);
+		var lines = _lineLengths(res.scriptSource);
 		
 		for (var i in _breakpoints) {
 			var b = _breakpoints[i];
