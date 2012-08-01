@@ -172,6 +172,13 @@ define(function (require, exports, module) {
 		setupTree($tree);
 	}
 
+	function reset() {
+		currentEventTrace = null;
+		setupNode($node);
+		setupTree($tree);
+		$events.empty();
+	}
+
 	// init
 	function init() {
 		// configure tab content
@@ -186,13 +193,6 @@ define(function (require, exports, module) {
 	}
 
 	function unload() {
-	}
-
-	function reset() {
-		currentEventTrace = null;
-		setupNode($node);
-		setupTree($tree);
-		$events.empty();
 	}
 
 	// public methods
