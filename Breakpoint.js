@@ -373,7 +373,7 @@ define(function (require, exports, module) {
 		}
 	}
 
-		// Init
+	// Init
 	function init() {
 		Inspector.on("connect", _onConnect);
 		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
