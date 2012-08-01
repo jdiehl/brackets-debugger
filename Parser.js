@@ -203,7 +203,6 @@ define(function (require, exports, module) {
 			id:       true,
 			type:     true,
 			kind:     true,
-			property: true,
 			loc:      true,
 			range:    true
 		};
