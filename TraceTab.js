@@ -175,7 +175,7 @@ define(function (require, exports, module) {
 		$node = $('<div class="node">').appendTo($tab);
 		$node.on("click", onNodeClick);
 		$tree = $('<div class="tree quiet-scrollbars">').appendTo($tab);
-		Panel.addTab(tabId, "Traces", $tab);
+		Panel.addTab(tabId, "Events", $tab);
 
 		$(Debugger).on("eventTrace", onEventTrace);
 	}
