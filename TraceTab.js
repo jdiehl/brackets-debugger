@@ -189,6 +189,9 @@ define(function (require, exports, module) {
 	}
 
 	function reset() {
+		currentEventTrace = null;
+		setupNode($node);
+		setupTree($tree);
 		$events.empty();
 	}
 
