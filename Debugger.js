@@ -131,7 +131,7 @@ define(function (require, exports, module) {
 	function _onInterruptionEnd() {
 		_interruptions--;
 		// return if there are ongoing interruptions or if we did not pause during interruption
-		if (_interruptions === 0 || ! _interruptionResult) { return; }
+		if (_interruptions !== 0 || ! _interruptionResult) { return; }
 		
 		// now process the result of a pause during interruption
 		var result = _interruptionResult;
