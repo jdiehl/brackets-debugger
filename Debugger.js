@@ -176,7 +176,11 @@ define(function (require, exports, module) {
 	// WebInspector Event: Debugger.paused
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
-
+		
+		// We don't process DOM triggered pauses at the moment
+		// Since those breakpoints resume automatically, they are also useless for everything else: just ignore them
+		if (res.reason === "DOM") { return; }
+		
 		// if this is the first pause since interruption
 		if (_pausedByInterruption) {
 			_pausedByInterruption = false;
