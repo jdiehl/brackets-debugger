@@ -223,14 +223,14 @@ define(function (require, exports, module) {
 		var index     = Parser.indexForDocument(doc);
 		if (! index) { return; }
 
-		var location = { line: cursor.line, column: token.start };
+		var offset = cm.indexFromPos({ line: cursor.line, ch: token.start });
 
 		// Find the variable for this token, else abort
-		var variable = index.findVariableAtLocation(location);
+		var variable = index.findVariableAtOffset(offset);
 		if (! variable) { return; }
 
 		// Find the function surrounding the variable, else abort
-		var fn = index.findFunctionAtLocation(location);
+		var fn = index.findFunctionAtOffset(offset);
 		if (! fn) { return; }
 
 		var resolveBefore = fn.resolveVariableBefore(variable, resolvingConstraints);

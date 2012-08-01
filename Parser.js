@@ -37,17 +37,20 @@ define(function (require, exports, module) {
 	var $exports = $(exports);
 	var documentIndexes = {};
 
+	// loc: store locations as node.loc.(start|end).(line|column)
+	// range: store locations as node.range[(0|1)]
+	var defaultParsingOptions = { loc: true, range: true };
+
 	/** Classes **************************************************************/
 
 	function Index(doc, handlers) {
 		this.doc = doc;
 
 		this.functions = [];
-		this.variables = {};
+		this.variables = [];
 		
-		// Loc: store locations as node.loc.(start|end).(line|column)
 		try {
-			var tree = parseDocument(doc, { loc: true });
+			var tree = parseDocument(doc);
 			if (tree) { walkParseTree(tree, handlers, this); }
 		}
 		catch (e) {
@@ -61,21 +64,21 @@ define(function (require, exports, module) {
 		},
 
 		addVariable: function (node) {
-			var line   = node.loc.start.line - 1;
-			var column = node.loc.start.column;
-			
-			if (! this.variables[line]) { this.variables[line] = {}; }
-			this.variables[line][column] = node.name;
+			this.variables.push({ name: node.name, range: node.range });
 		},
 
-		findFunctionAtLocation: function (location) {
+		findFunctionAtOffset: function (offset) {
 			for (var func, i = 0, length = this.functions.length; i < length; i++) {
-				if ((func = this.functions[i].findFunctionAtLocation(location))) { return func; }
+				if ((func = this.functions[i].findFunctionAtOffset(offset))) { return func; }
 			}
 		},
 		
-		findVariableAtLocation: function (location) {
-			return this.variables[location.line] ? this.variables[location.line][location.column] : null;
+		findVariableAtOffset: function (offset) {
+			var vars = this.variables;
+			for (var i = 0; i < vars.length; i++) {
+				var variable = vars[i];
+				if (offset >= variable.range[0] && offset < variable.range[1]) { return variable.name; }
+			}
 		},
 
 		setTracepoints: function () {
@@ -87,35 +90,84 @@ define(function (require, exports, module) {
 				results.push(func.setTracepoints(this.doc.url));
 			}
 			return $.when.apply(null, results);
+		},
+
+		shiftOffsets: function (offset, by) {
+			this.shiftVariableOffsets(offset, by);
+			this.shiftFunctionOffsets(offset, by);
+		},
+
+		shiftVariableOffsets: function (offset, by) {
+			var vars = this.variables;
+			for (var i = 0; i < vars.length; i++) {
+				var variable = vars[i];
+				if (variable.range[0] >= offset) {
+					variable.range[0] += by;
+					variable.range[1] += by;
+				}
+			}
+		},
+
+		shiftFunctionOffsets: function (offset, by) {
+			for (var func, i = 0, length = this.functions.length; i < length; i++) {
+				this.functions[i].shiftOffsets(offset, by);
+			}
+		},
+
+		forgetVariablesInRange: function (range) {
+			var vars = this.variables;
+			for (var i = 0; i < vars.length; i++) {
+				var variable = vars[i];
+				if (variable.range[0] >= range[0] && variable.range[1] <= range[1]) {
+					vars.splice(i, 1);
+				}
+			}
 		}
 	};
 
 	function FunctionNode(node) {
-		this.node  = node;
-
-		this.name  = node.id ? node.id.name : null;
-		this.start = node.loc.start;
-		this.end   = node.loc.end;
-		
-		this.start.line -= 1;
-		this.end.line   -= 1;
-		
+		this.setNode(node);
 		this.children    = [];
 		this.tracepoints = {};
 	}
 
 	FunctionNode.prototype = {
+		setNode: function (node) {
+			this.node  = node;
+
+			this.name  = node.id ? node.id.name : null;
+			this.start = node.loc.start;
+			this.end   = node.loc.end;
+			this.range = node.range;
+			
+			this.start.line -= 1;
+			this.end.line   -= 1;
+		},
+		
 		addChild: function (func) {
 			func.parent = this;
 			this.children.push(func);
 		},
 		
-		findFunctionAtLocation: function (location) {
-			if (! locationIsBetween(location, this.start, this.end)) { return; }
+		findFunctionAtOffset: function (offset) {
+			if (offset < this.range[0] || offset > this.range[1]) { return; }
 			for (var func, i = 0, length = this.children.length; i < length; i++) {
-				if ((func = this.children[i].findFunctionAtLocation(location))) { return func; }
+				if ((func = this.children[i].findFunctionAtOffset(offset))) { return func; }
 			}
 			return this;
+		},
+
+		shiftOffsets: function (offset, by) {
+			if (this.range[0] >= offset) {
+				this.range[0] += by;
+			}
+			if (this.range[1] >= offset) {
+				this.range[1] += by;
+			}
+
+			for (var i = 0, length = this.children.length; i < length; i++) {
+				this.children[i].shiftOffsets(offset, by);
+			}
 		},
 
 		// Add two tracepoints, one at the beginning, one at the end of the function
@@ -143,6 +195,38 @@ define(function (require, exports, module) {
 
 		resolveVariableAfter: function (variable, constraints) {
 			return this.tracepoints.end.resolveVariable(variable, constraints);
+		},
+
+		parseInString: function (code, index) {
+			code  = code.slice(this.range[0], this.range[1]);
+
+			// Add whitespace in front to get the same line, column and offsets
+			var spacesToAdd     = this.start.column;
+			var linesToAdd      = this.start.line;
+			var charactersToAdd = this.range[0] - spacesToAdd - linesToAdd;
+			var i, prefix = [];
+			for (i = 0; i < charactersToAdd; i++) { prefix.push(" "); }
+			for (i = 0; i < linesToAdd; i++)      { prefix.push("\n"); }
+			for (i = 0; i < spacesToAdd; i++)     { prefix.push(" "); }
+			prefix.push(code);
+			code = prefix.join("");
+
+			// Parse the new function and replace the node
+			try {
+				this.setNode(parseString(code).body[0]);
+			}
+			catch (e) {
+				console.log("Error while parsing", code, e);
+				throw e;
+			}
+
+			index.forgetVariablesInRange(this.range);
+			var handlers = {
+				Identifier:          onVariableParsed,
+				VariableDeclarator:  onVariableParsed,
+				ThisExpression:      onVariableParsed
+			};
+			walkParseTree(this.node.body, handlers, index);
 		}
 	};
 
@@ -167,9 +251,26 @@ define(function (require, exports, module) {
 		});
 	}
 	
+	function onScriptChanged(res) {
+		// script = {callFrames, result, script, scriptSource, diff}
+		var index = documentIndexes[res.script.url];
+		if (! index) { return; }
+		
+		var shift = 0;
+		for (var offset in res.diff) {
+			var added = res.diff[offset];
+			index.shiftOffsets(offset, added);
+
+			var fn = index.findFunctionAtOffset(offset);
+			if (fn) { fn.parseInString(res.scriptSource, index); }
+			
+			shift += added;
+		}
+	}
+
 	function onFunctionParsed(node, index) {
 		var func = new FunctionNode(node);
-		var parent = index.findFunctionAtLocation({ line: func.start.line, column: func.start.column });
+		var parent = index.findFunctionAtOffset(node.range[0]);
 		if (parent) {
 			parent.addChild(func);
 		} else {
@@ -183,14 +284,10 @@ define(function (require, exports, module) {
 		index.addVariable(node);
 	}
 
-	function onScriptChanged(res) {
-		// script = {callFrames, result, script, scriptSource, diff}
-	}
-
 	/** Actions **************************************************************/
 
 	function parseString(code, options) {
-		return esprima.parse(code, options);
+		return esprima.parse(code, options || defaultParsingOptions);
 	}
 
 	function parseDocument(doc, options) {
