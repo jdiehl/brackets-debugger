@@ -235,22 +235,40 @@ define(function (require, exports, module) {
 			cache[value.objectId] = value;
 			if (! constraints.maxDepth || depth < constraints.maxDepth) {
 				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
+					var i, info;
 					var pending = [];
 					var resolved = value.value = {};
 
-					var used = 0;
-					for (var i = 0; i < res.result.length; i++) {
-						var info = res.result[i];
-						if (! info.enumerable) { continue; }
-						used++;
-						if (constraints.maxChildren && used > constraints.maxChildren) {
-							resolved[""] = { special: "abbreviated" };
-							break;
-						}
-						resolved[info.name] = info.value;
-						pending.push(resolveVariable(info.value, constraints, cache, depth + 1));
+					var preferredKeys = null;
+					if (value.subtype === "node") {
+						preferredKeys = ["nodeType", "nodeName", "id", "className", "dataset", "attributes"];
 					}
 
+					if (preferredKeys) {
+						var byName = {};
+						for (i = 0; i < res.result.length; i++) {
+							if (preferredKeys.indexOf(res.result[i].name) === -1) { continue; }
+							info = res.result[i];
+							resolved[info.name] = info.value;
+							pending.push(resolveVariable(info.value, {}, cache, depth + 1));
+						}
+						resolved[""] = { special: "abbreviated" };
+					}
+					else {
+						var used = 0;
+						for (i = 0; i < res.result.length; i++) {
+							info = res.result[i];
+							if (! info.enumerable) { continue; }
+							used++;
+							if (constraints.maxChildren && used > constraints.maxChildren) {
+								resolved[""] = { special: "abbreviated" };
+								break;
+							}
+							resolved[info.name] = info.value;
+							pending.push(resolveVariable(info.value, constraints, cache, depth + 1));
+						}
+					}
+	
 					$.when.apply(null, pending).done(function () {
 						if (value.type === "function") {
 							Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
