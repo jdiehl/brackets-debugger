@@ -339,22 +339,6 @@ define(function (require, exports, module) {
 		}
 	}
 
-	// Init
-	function init() {
-		Inspector.on("connect", _onConnect);
-		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		Inspector.on("ScriptAgent.setScriptSource", _onSetScripSource);
-		if (Inspector.connected()) _onConnect();
-	}
-
-	// Unload
-	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		Inspector.off("ScriptAgent.setScriptSource", _onSetScripSource);
-		$exports.off();
-	}
-
 	// Find resolved breakpoints
 	function findResolved(location) {
 		if (!location.scriptId) {
@@ -387,6 +371,22 @@ define(function (require, exports, module) {
 				return b;
 			}
 		}
+	}
+
+		// Init
+	function init() {
+		Inspector.on("connect", _onConnect);
+		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		Inspector.on("ScriptAgent.setScriptSource", _onSetScripSource);
+		if (Inspector.connected()) _onConnect();
+	}
+
+	// Unload
+	function unload() {
+		Inspector.off("connect", _onConnect);
+		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		Inspector.off("ScriptAgent.setScriptSource", _onSetScripSource);
+		$exports.off();
 	}
 
 	exports.init = init;
