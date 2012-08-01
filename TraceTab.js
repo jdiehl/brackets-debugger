@@ -67,7 +67,8 @@ define(function (require, exports, module) {
 		return r;
 	}
 
-	function onEventTrace(e, trace) {
+	function _showEventTrace(e, trace) {
+		$(trace).off("change", _showEventTrace);
 		var $event = $('<div class="fresh event">');
 		var eventName = trace.event;
 		var className = trace.callFrames[0].this.className;
@@ -84,6 +85,10 @@ define(function (require, exports, module) {
 			.append($eventDesc)
 			.prependTo($events)
 			.removeClassDelayed("fresh");
+	}
+
+	function onEventTrace(e, trace) {
+		$(trace).on("change", _showEventTrace);
 	}
 
 	function _traceChildrenForTree(parent) {
