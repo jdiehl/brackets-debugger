@@ -33,6 +33,7 @@ define(function (require, exports, module) {
 
 	var Breakpoint = require("Breakpoint");
 	var Trace = require("Trace");
+	var Parser = require("Parser");
 	var events = require("events");
 	
 	var $exports = $(exports);
@@ -275,19 +276,10 @@ define(function (require, exports, module) {
 	}
 
 	function _onSetScriptSource(res) {
+		// res = {callFrames, result, script, scriptSource, diff}
 		if (res.callFrames && res.callFrames.length) {
 			// todo: update the callframes of the current breakpoint
 		}
-
-		// compute the character change for each change (3 entries in the chunks array)
-		var i, chunks = res.result.textual_diff.chunks;
-		var diff = {};
-		for (i = 0; i + 2 < chunks.length; i += 3) {
-			diff[chunks[i]] = chunks[i + 2] - chunks[i + 1];
-		}
-		
-		// todo: fix the breakpoints
-		// we must somehow convert the offset stored in diff to lines and columns
 	}
 
 	/** Init Functions *******************************************************/
