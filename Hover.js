@@ -41,6 +41,7 @@ define(function (require, exports, module) {
 	// state
 	var hover = { cursor: null, token: null };
 	var $popup;
+	var currentTokenHoverId = 0;
 	
 	/** Helper Functions *****************************************************/
 	
@@ -214,6 +215,8 @@ define(function (require, exports, module) {
 	function onTokenHover(token, cursor, cmLinesNode, cm) {
 		// Close the popup
 		removePopup();
+		// Allow earlier hoverings to abort
+		var id = ++currentTokenHoverId;
 
 		// No token hovered? We're done
 		if (! token) { return; }
@@ -236,6 +239,8 @@ define(function (require, exports, module) {
 		var resolveBefore = fn.resolveVariableBefore(variable, resolvingConstraints);
 		var resolveAfter  = fn.resolveVariableAfter(variable, resolvingConstraints);
 		$.when(resolveBefore, resolveAfter).done(function (before, after) {
+			// Abort if some other variable was hovered over
+			if (id !== currentTokenHoverId) { return; }
 			if (after.details && after.details.location) {
 				token.location = after.details.location;
 			} else if (before.details && before.details.location) {
