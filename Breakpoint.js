@@ -376,6 +376,7 @@ define(function (require, exports, module) {
 	// Init
 	function init() {
 		Inspector.on("connect", _onConnect);
+		Inspector.on("Debugger.breakpointResolved", _onBreakpointResolved);
 		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 		Inspector.on("ScriptAgent.setScriptSource", _onSetScripSource);
 		if (Inspector.connected()) _onConnect();
@@ -384,6 +385,7 @@ define(function (require, exports, module) {
 	// Unload
 	function unload() {
 		Inspector.off("connect", _onConnect);
+		Inspector.off("Debugger.breakpointResolved", _onBreakpointResolved);
 		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 		Inspector.off("ScriptAgent.setScriptSource", _onSetScripSource);
 		$exports.off();
