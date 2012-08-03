@@ -59,7 +59,9 @@ define(function (require, exports, module) {
 
 		// close a function
 		if (trace.type === "function.end") {
-			_lastParent = _lastParent.parent;
+			if (_lastParent) {
+				_lastParent = _lastParent.parent;
+			}
 			return;
 		}
 

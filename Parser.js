@@ -239,15 +239,17 @@ define(function (require, exports, module) {
 		if (documentIndexes[url]) { return; }
 
 		// Interrupt execution
-		var deferred = new $.Deferred();
-		Debugger.interrupt(deferred);
-		// Load document
-		DocumentManager.getDocumentForPath(url.slice(7)).done(function (doc) {
-			doc.url = doc.url || url;
-			// Parse the document
-			var index = createIndexForDocument(doc);
-			// Set tracepoints, then continue execution
-			index.setTracepoints().then(deferred.resolve);
+		Debugger.interrupt(function () {
+			var deferred = new $.Deferred();
+			// Load document
+			DocumentManager.getDocumentForPath(url.slice(7)).done(function (doc) {
+				doc.url = doc.url || url;
+				// Parse the document
+				var index = createIndexForDocument(doc);
+				// Set tracepoints, then continue execution
+				index.setTracepoints().then(deferred.resolve);
+			});
+			return deferred.promise();
 		});
 	}
 	
