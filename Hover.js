@@ -246,14 +246,14 @@ define(function (require, exports, module) {
 			} else if (before.details && before.details.location) {
 				token.location = before.details.location;
 			}
-			
-			before = describeValue(before);
-			after  = describeValue(after);
-			if (before !== after) {
-				before += " ↦ " + after;
-			}
 
-			$popup = showValue(before, cursor.line, token.start, token.end, cmLinesNode, cm);
+			var text, beforeText, afterText;
+			if (before.type !== "undefined" && before.scope !== "local") {
+				beforeText = describeValue(before);
+			}
+			afterText = describeValue(after);
+			text = (beforeText === undefined || beforeText === afterText) ? afterText : beforeText + " ↦ " + afterText;
+			$popup = showValue(text, cursor.line, token.start, token.end, cmLinesNode, cm);
 		});
 	}
 
