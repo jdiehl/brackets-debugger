@@ -63,9 +63,10 @@ define(function (require, exports, module) {
 			for (i in lines) {
 				x += lines[i];
 				if (x > offset) {
+					var lineNumber = parseInt(i, 10);
 					var columnNumber = offset - (x - lines[i]);
-					if (location.lineNumber !== i || location.columnNumber !== columnNumber) {
-						location.lineNumber = parseInt(i, 10);
+					if (location.lineNumber !== lineNumber || location.columnNumber !== columnNumber) {
+						location.lineNumber = lineNumber;
 						location.columnNumber = columnNumber;
 					}
 					break;
@@ -401,4 +402,13 @@ define(function (require, exports, module) {
 	exports.findById = findById;
 	exports.findResolved = findResolved;
 	exports.Breakpoint = Breakpoint;
+	exports.breakpoints = _breakpoints;
+	exports.locations = function () {
+		var r = [];
+		for (var i in _breakpoints) {
+			var l = _breakpoints[i].resolvedLocations;
+			r.push(l ? l[0].lineNumber + ":" + l[0].columnNumber : "");
+		}
+		return r;
+	};
 });
