@@ -148,9 +148,10 @@ define(function (require, exports, module) {
 	}
 
 	function onTrace(event, tracepoint) {
-		var editor = _editorForLocation(tracepoint.location);
+		var location = tracepoint.resolvedLocations ? tracepoint.resolvedLocations[0] : tracepoint.location;
+		var editor = _editorForLocation(location);
 		if (editor) {
-			setTemporaryLineClass(editor, tracepoint.location.lineNumber, "trace", 5000);
+			setTemporaryLineClass(editor, location.lineNumber, "trace", 5000);
 		}
 	}
 
