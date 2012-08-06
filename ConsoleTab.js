@@ -170,12 +170,10 @@ define(function (require, exports, module) {
 	}
 
 	function _onPaused(event, info) {
-		if (! info.halt) { return; }
 		_updateButtonsForPauseState(true);
 	}
 
-	function _onResumed(event, info, stayPaused) {
-		if (! info.halt || stayPaused) { return; }
+	function _onResumed(event, info) {
 		_updateButtonsForPauseState(false);
 	}
 

@@ -41,36 +41,38 @@ define(function (require, exports, module) {
 	var _breakOnTracepoints = false;
 
 	var _interruptions = 0;
-	var _interruptionResult;
-	var _pausedByInterruption = false;
-
-	var _stayPaused = false;
-	var _pauseAfterReload = false;
 
 	/** Actions **************************************************************/
 
-	// pause execution until the deferred is complete
-	function interrupt(deferred) {
-		_interruptions++;
-		if (_interruptions === 1) {
-			_pausedByInterruption = true;
-			Inspector.Debugger.pause();
-		}
-		deferred.then(_onInterruptionEnd);
-	}
-
     // pause the debugger
 	function pause() {
-		_stayPaused = true;
-		// if there is no pause before the next reload, press pause again
-		_pauseAfterReload = true;
+		exports.paused = true;
 		Inspector.Debugger.pause();
 	}
 
 	// resume the debugger
 	function resume() {
-		_stayPaused = false;
+		exports.paused = false;
 		Inspector.Debugger.resume();
+	}
+
+	// pause execution until the promise is complete
+	function interrupt(callback) {
+		function release() {
+			if (--_interruptions === 0) {
+				resume();
+			}
+		}
+		_interruptions++;
+		if (_interruptions === 1) {
+			pause();
+		}
+		var r = callback();
+		if (typeof r.then === "function") {
+			r.then(release);
+		} else {
+			release();
+		}
 	}
 
 	// step over the current line
@@ -100,16 +102,19 @@ define(function (require, exports, module) {
 	function toggleBreakpoint(location) {
 		var breakpoints = Breakpoint.findResolved(location);
 		var b;
-		if (breakpoints.length === 0) {
-			b = new Breakpoint.Breakpoint(location);
-			$(b)
-				.on("resolve", _onResolveBreakpoint)
-				.on("remove", _onRemoveBreakpoint);
-			breakpoints.push(b);
-		}
 		for (var i in breakpoints) {
-			breakpoints[i].toggle();
+			b = breakpoints[i];
+			if (b.haltOnPause) {
+				b.toggle();
+				return;
+			}
 		}
+		b = new Breakpoint.Breakpoint(location);
+		breakpoints.push(b);
+		$(b)
+			.on("resolve", _onResolveBreakpoint)
+			.on("remove", _onRemoveBreakpoint);
+		b.set();
 	}
 
 	// evaluate an expression in the active call frame
@@ -133,35 +138,33 @@ define(function (require, exports, module) {
 
 	/** Event Handlers *******************************************************/
 
-	// continue execution if all interruptions have ended
-	function _onInterruptionEnd() {
-		_interruptions--;
-		// return if there are ongoing interruptions or if we did not pause during interruption
-		if (_interruptions !== 0 || ! _interruptionResult) { return; }
-		
-		// now process the result of a pause during interruption
-		var result = _interruptionResult;
-		_interruptionResult = null;
-		_onPaused(result);
-	}
-
-	function _onBreakpointPause(res, info) {
+	function _onBreakpointPause(res) {
 		// find the breakpoints at that location
-		var breakpoints = info.breakpoints = Breakpoint.findResolved(info.location);
+		var breakpoints = res.breakpoints = Breakpoint.findResolved(res.location);
 
-		// determine whether to actually halt by asking all breakpoints
-		var halt = false;
-		var trace, b;
-		for (var i in breakpoints) {
-			b = breakpoints[i];
-			b.triggerPaused(info.callFrames);
-			if (_breakOnTracepoints || b.haltOnPause) halt = true;
+		// do not autoresume if there are no breakpoints
+		if (breakpoints.length === 0) {
+			return false;
 		}
 
-		return halt;
+		// do not autoresume if there is a true breakpoint
+		var shouldResume = true;
+		var i, b;
+		for (i in breakpoints) {
+			b = breakpoints[i];
+			b.triggerPaused(res.callFrames);
+			if (b.haltOnPause) {
+				shouldResume = false;
+			} else {
+				$exports.triggerHandler("trace", b);
+			}
+		}
+
+		// do not autoresume if break on tracepoints is turned on
+		return _breakOnTracepoints ? false : shouldResume;
 	}
 
-	function _onEventPause(res, info) {
+	function _onEventPause(res) {
 		// E.g. listener:click, instrumentation:timerFired
 		var eventName = res.data.eventName;
 		var pos = eventName.indexOf(":");
@@ -170,50 +173,50 @@ define(function (require, exports, module) {
 		var trace = new Trace.Trace("event", res.callFrames, eventName);
 		$exports.triggerHandler("eventTrace", trace);
 
+		// autoresume
+		return true;
+	}
+
+	// determine the pause handler
+	function _pauseHandler(res) {
+		switch (res.reason) {
+		case "other":
+			return _onBreakpointPause(res);
+		case "EventListener":
+			return _onEventPause(res);
+		}
 		return false;
 	}
 
 	// WebInspector Event: Debugger.paused
 	function _onPaused(res) {
 		// res = {callFrames, reason, data}
-		
-		// We don't process DOM triggered pauses at the moment
-		// Since those breakpoints resume automatically, they are also useless for everything else: just ignore them
+
+		// we don't process DOM triggered pauses at the moment
+		// since those breakpoints resume automatically, they are also useless for everything else: just ignore them
 		if (res.reason === "DOM") { return; }
-		
-		// if this is the first pause since interruption
-		if (_pausedByInterruption) {
-			_pausedByInterruption = false;
-			// if there are still unfinished interruptions
-			if (_interruptions) {
-				// defer handling of this pause until all interruptions are over
-				// by then the tracepoints should be set so the handlers below can find them
-				// the last interruption will call _onPaused again with res = _interruptionResult
-				_interruptionResult = res;
-				return;
-			}
-			// the interruptions are already over, so handle this like any other pause
+
+		// ignore a pause caused by interruption
+		if (_interruptions > 0) {
+			return;
 		}
 
-		// pressing the pause button has succeeded, so we don't need to do it again after a reload
-		_pauseAfterReload = false;
-		
 		// gather some info about this pause
-		_paused = { location: res.callFrames[0].location, callFrames: res.callFrames };
+		res.location = res.callFrames[0].location;
 
-		// determine whether to halt
-		var handler;
-		if (res.reason === "other")              { handler = _onBreakpointPause; }
-		else if (res.reason === "EventListener") { handler = _onEventPause; }
-		_paused.halt = (handler ? handler(res, _paused) : false) || _stayPaused;
-		// Stepping triggers resume, then pause, and we need to step again then
-		if (! _stayPaused) { _stayPaused = _paused.halt; }
+		// handle the pause
+		var _autoResume = _pauseHandler(res);
 
-		// trigger the "paused" event
-		$exports.triggerHandler("paused", _paused);
-		
-		// resume if necessary
-		if (! _paused.halt) { Inspector.Debugger.resume(); }
+		// autoresume
+		if (_autoResume && !exports.paused) {
+			_paused = undefined;
+			Inspector.Debugger.resume();
+		} else {
+			// trigger the "paused" event
+			_paused = res;
+			exports.paused = true;
+			$exports.triggerHandler("paused", _paused);
+		}
 	}
 
 	// WebInspector Event: Debugger.resumed
@@ -222,7 +225,7 @@ define(function (require, exports, module) {
 
 		// send the "resumed" event with the info from the pause
 		if (_paused) {
-			$exports.triggerHandler("resumed", [_paused, _stayPaused]);
+			$exports.triggerHandler("resumed", _paused);
 			_paused = undefined;
 		}
 	}
@@ -267,9 +270,7 @@ define(function (require, exports, module) {
 	// Inspector Event: Debugger.globalObjectCleared
 	function _onGlobalObjectCleared() {
 		// Normally, Chrome is not paused after a reload, so the next pause will be for breakpoints/events
-		_stayPaused = false;
-		// After pressing the pause button the page was reloaded before a pause occured: pause now
-		if (_pauseAfterReload) { pause(); }
+		exports.paused = false;
 		$exports.triggerHandler("reload");
 	}
 

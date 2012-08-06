@@ -156,7 +156,15 @@ define(function (require, exports, module) {
 
 	function onTraceSelected(trace) {
 		if (! trace) { return; }
-		var l = trace.location;
+		var l = trace.callFrames.length > 1 ? trace.callFrames[1].location : trace.location;
+		if (!l.url) {
+			var script = ScriptAgent.scriptWithId(l.scriptId);
+			if (script && script.url) {
+				l.url = script.url;
+			} else {
+				l = trace.location;
+			}
+		}
 		GotoAgent.open(l.url, { line: l.lineNumber, ch: l.columnNumber });
 	}
 

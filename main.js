@@ -147,20 +147,22 @@ define(function (require, exports, module) {
 		editor._codeMirror.clearMarker(location.lineNumber, null, "breakpoint");
 	}
 
-	function onPaused(event, res) {
-		if (res.halt) {
-			var url = _urlForLocation(res.location);
-			if (! url) { return; }
-			var trip = GotoAgent.open(url, { line: res.location.lineNumber, ch: res.location.columnNumber }, true);
-			if (! trip) { return; }
-			trip.done(function () {
-				EditorManager.getCurrentFullEditor()._codeMirror.setLineClass(res.location.lineNumber, "paused");
-			});
-		} else if (res.breakpoints) {
-			var editor = _editorForLocation(res.location);
-			if (! editor) { return; }
-			setTemporaryLineClass(editor, res.location.lineNumber, "trace", 5000);
+	function onTrace(event, tracepoint) {
+		var location = tracepoint.resolvedLocations ? tracepoint.resolvedLocations[0] : tracepoint.location;
+		var editor = _editorForLocation(location);
+		if (editor) {
+			setTemporaryLineClass(editor, location.lineNumber, "trace", 5000);
 		}
+	}
+
+	function onPaused(event, res) {
+		var url = _urlForLocation(res.location);
+		if (! url) { return; }
+		var trip = GotoAgent.open(url, { line: res.location.lineNumber, ch: res.location.columnNumber }, true);
+		if (! trip) { return; }
+		trip.done(function () {
+			EditorManager.getCurrentFullEditor()._codeMirror.setLineClass(res.location.lineNumber, "paused");
+		});
 	}
 
 	function onReload(event) {
@@ -170,11 +172,9 @@ define(function (require, exports, module) {
 	}
 
 	function onResumed(event, res) {
-		if (res.halt && res.location) {
-			var editor = _editorForLocation(res.location);
-			if (! editor) { return; }
-			editor._codeMirror.setLineClass(res.location.lineNumber);
-		}
+		var editor = _editorForLocation(res.location);
+		if (! editor) { return; }
+		editor._codeMirror.setLineClass(res.location.lineNumber);
 	}
 
 	function onToggleBreakEvents() {
@@ -216,6 +216,7 @@ define(function (require, exports, module) {
 		$Debugger.on("paused", onPaused);
 		$Debugger.on("resumed", onResumed);
 		$Debugger.on("reload", onReload);
+		$Debugger.on("trace", onTrace);
 
 		// register for code mirror click events
 		// Todo: use CodeMirror's onGutterClick

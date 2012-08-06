@@ -63,9 +63,10 @@ define(function (require, exports, module) {
 			for (i in lines) {
 				x += lines[i];
 				if (x > offset) {
+					var lineNumber = parseInt(i, 10);
 					var columnNumber = offset - (x - lines[i]);
-					if (location.lineNumber !== i || location.columnNumber !== columnNumber) {
-						location.lineNumber = parseInt(i, 10);
+					if (location.lineNumber !== lineNumber || location.columnNumber !== columnNumber) {
+						location.lineNumber = lineNumber;
 						location.columnNumber = columnNumber;
 					}
 					break;
@@ -74,6 +75,77 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function _resolveVariable(value, constraints, cache, depth) {
+		if (! cache) { cache = {}; }
+		if (! depth) { depth = 0; }
+		
+		var result = new $.Deferred();
+
+		var ignore = !value || (value.type == "object" && (value.className == "Window" || value.className == "Document"));
+		if (ignore || ! value.objectId) {
+			result.resolve(value);
+		}
+		else if (cache[value.objectId]) {
+			result.resolve(cache[value.objectId]);
+		}
+		else {
+			cache[value.objectId] = value;
+			if (! constraints.maxDepth || depth < constraints.maxDepth) {
+				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
+					var i, info;
+					var pending = [];
+					var resolved = value.value = {};
+
+					var preferredKeys = null;
+					if (value.subtype === "node") {
+						preferredKeys = ["nodeType", "nodeName", "id", "className", "dataset", "attributes"];
+					}
+
+					if (preferredKeys) {
+						var byName = {};
+						for (i = 0; i < res.result.length; i++) {
+							if (preferredKeys.indexOf(res.result[i].name) === -1) { continue; }
+							info = res.result[i];
+							resolved[info.name] = info.value;
+							pending.push(_resolveVariable(info.value, {}, cache, depth + 1));
+						}
+						resolved[""] = { special: "abbreviated" };
+					}
+					else {
+						var used = 0;
+						for (i = 0; i < res.result.length; i++) {
+							info = res.result[i];
+							if (! info.enumerable) { continue; }
+							used++;
+							if (constraints.maxChildren && used > constraints.maxChildren) {
+								resolved[""] = { special: "abbreviated" };
+								break;
+							}
+							resolved[info.name] = info.value;
+							pending.push(_resolveVariable(info.value, constraints, cache, depth + 1));
+						}
+					}
+	
+					$.when.apply(null, pending).done(function () {
+						if (value.type === "function") {
+							Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
+								value.details = res.details;
+								result.resolve(value);
+							});
+						}
+						else {
+							result.resolve(value);
+						}
+					});
+				});
+			} else {
+				result.resolve(value);
+			}
+		}
+
+		return result.promise();
+	}
+	
 	// Breakpoints Class
 	function Breakpoint(location, condition, type) {
 		if (type === undefined) type = "user";
@@ -208,7 +280,9 @@ define(function (require, exports, module) {
 			var callFrame = trace.callFrames[callFrameIndex];
 
 			if (variable === "this" && callFrame.this) {
-				resolveVariable(callFrame.this, constraints).done(result.resolve);
+				var value = callFrame.this;
+				value.scope = "this";
+				_resolveVariable(value, constraints).done(result.resolve);
 			}
 			else {
 				trace.resolveCallFrame(callFrameIndex).done(function () {
@@ -216,7 +290,9 @@ define(function (require, exports, module) {
 					for (var i = 0; i < scopeChain.length; i++) {
 						var vars = scopeChain[i].resolved;
 						if (vars && vars[variable]) {
-							resolveVariable(vars[variable], constraints).done(result.resolve);
+							var value = vars[variable];
+							value.scope = scopeChain[i].type;
+							_resolveVariable(value, constraints).done(result.resolve);
 							return;
 						}
 					}
@@ -228,77 +304,6 @@ define(function (require, exports, module) {
 		}
 	};
 
-	function resolveVariable(value, constraints, cache, depth) {
-		if (! cache) { cache = {}; }
-		if (! depth) { depth = 0; }
-		
-		var result = new $.Deferred();
-
-		var ignore = !value || (value.type == "object" && (value.className == "Window" || value.className == "Document"));
-		if (ignore || ! value.objectId) {
-			result.resolve(value);
-		}
-		else if (cache[value.objectId]) {
-			result.resolve(cache[value.objectId]);
-		}
-		else {
-			cache[value.objectId] = value;
-			if (! constraints.maxDepth || depth < constraints.maxDepth) {
-				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
-					var i, info;
-					var pending = [];
-					var resolved = value.value = {};
-
-					var preferredKeys = null;
-					if (value.subtype === "node") {
-						preferredKeys = ["nodeType", "nodeName", "id", "className", "dataset", "attributes"];
-					}
-
-					if (preferredKeys) {
-						var byName = {};
-						for (i = 0; i < res.result.length; i++) {
-							if (preferredKeys.indexOf(res.result[i].name) === -1) { continue; }
-							info = res.result[i];
-							resolved[info.name] = info.value;
-							pending.push(resolveVariable(info.value, {}, cache, depth + 1));
-						}
-						resolved[""] = { special: "abbreviated" };
-					}
-					else {
-						var used = 0;
-						for (i = 0; i < res.result.length; i++) {
-							info = res.result[i];
-							if (! info.enumerable) { continue; }
-							used++;
-							if (constraints.maxChildren && used > constraints.maxChildren) {
-								resolved[""] = { special: "abbreviated" };
-								break;
-							}
-							resolved[info.name] = info.value;
-							pending.push(resolveVariable(info.value, constraints, cache, depth + 1));
-						}
-					}
-	
-					$.when.apply(null, pending).done(function () {
-						if (value.type === "function") {
-							Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
-								value.details = res.details;
-								result.resolve(value);
-							});
-						}
-						else {
-							result.resolve(value);
-						}
-					});
-				});
-			} else {
-				result.resolve(value);
-			}
-		}
-
-		return result.promise();
-	}
-	
 	// Inspector Event: breakpoint resolved
 	function _onBreakpointResolved(res) {
 		// res = {breakpointId, location}
@@ -376,6 +381,7 @@ define(function (require, exports, module) {
 	// Init
 	function init() {
 		Inspector.on("connect", _onConnect);
+		Inspector.on("Debugger.breakpointResolved", _onBreakpointResolved);
 		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 		Inspector.on("ScriptAgent.setScriptSource", _onSetScripSource);
 		if (Inspector.connected()) _onConnect();
@@ -384,6 +390,7 @@ define(function (require, exports, module) {
 	// Unload
 	function unload() {
 		Inspector.off("connect", _onConnect);
+		Inspector.off("Debugger.breakpointResolved", _onBreakpointResolved);
 		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
 		Inspector.off("ScriptAgent.setScriptSource", _onSetScripSource);
 		$exports.off();
@@ -395,4 +402,13 @@ define(function (require, exports, module) {
 	exports.findById = findById;
 	exports.findResolved = findResolved;
 	exports.Breakpoint = Breakpoint;
+	exports.breakpoints = _breakpoints;
+	exports.locations = function () {
+		var r = [];
+		for (var i in _breakpoints) {
+			var l = _breakpoints[i].resolvedLocations;
+			r.push(l ? l[0].lineNumber + ":" + l[0].columnNumber : "");
+		}
+		return r;
+	};
 });

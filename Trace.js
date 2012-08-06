@@ -59,7 +59,9 @@ define(function (require, exports, module) {
 
 		// close a function
 		if (trace.type === "function.end") {
-			_lastParent = _lastParent.parent;
+			if (_lastParent) {
+				_lastParent = _lastParent.parent;
+			}
 			return;
 		}
 
@@ -93,9 +95,21 @@ define(function (require, exports, module) {
 
 		// connect the trace to its siblings
 		_setupTraceTree(this);
+
+		// attach an event to the target DOM node
+		if (this.type === "event") {
+			this._attachToDOM();
+		}
 	}
 
 	Trace.prototype = {
+		_attachToDOM: function () {
+			this.resolveTargetNode().then(function (node) {
+				if (!node.events) node.events = [];
+				node.events.push(this);
+			}.bind(this));
+		},
+
 		addChild: function (trace) {
 			this.children.push(trace);
 			$(this).triggerHandler("change", this);

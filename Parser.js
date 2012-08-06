@@ -241,19 +241,17 @@ define(function (require, exports, module) {
 		// Extract the path, strip the third slash when on Windows
 		var path = url.slice(brackets.platform === "win" ? 8 : 7);
 
-		// Interrupt execution
-		var deferred = new $.Deferred();
-		Debugger.interrupt(deferred);
-		// Load document
-		DocumentManager.getDocumentForPath(path).done(function (doc) {
-			doc.url = doc.url || url;
-			// Parse the document
-			var index = createIndexForDocument(doc);
-			// Set tracepoints, then continue execution
-			index.setTracepoints().then(deferred.resolve);
-		}).fail(function (err) {
-			console.log("Error while loading document " + path, arguments);
-			deferred.resolve();
+		Debugger.interrupt(function () {
+			var deferred = new $.Deferred();
+			// Load document
+			DocumentManager.getDocumentForPath(path).done(function (doc) {
+				doc.url = doc.url || url;
+				// Parse the document
+				var index = createIndexForDocument(doc);
+				// Set tracepoints, then continue execution
+				index.setTracepoints().then(deferred.resolve);
+			});
+			return deferred.promise();
 		});
 	}
 	
