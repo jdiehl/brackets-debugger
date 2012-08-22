@@ -305,7 +305,7 @@ define(function (require, exports, module) {
 	};
 
 	// Inspector Event: breakpoint resolved
-	function _onBreakpointResolved(res) {
+	function _onBreakpointResolved(event, res) {
 		// res = {breakpointId, location}
 		var breakpoint = findById(res.breakpointId);
 		if (breakpoint) {
@@ -314,7 +314,7 @@ define(function (require, exports, module) {
 	}
 
 	// Inspector Event: Debugger.globalObjectCleared
-	function _onGlobalObjectCleared() {
+	function _onGlobalObjectCleared(event) {
 		// Reset the trace array for all tracepoints
 		for (var i in _breakpoints) {
 			_breakpoints[i]._reset();
@@ -322,7 +322,7 @@ define(function (require, exports, module) {
 	}
 
 	// Inspector connected
-	function _onConnect() {
+	function _onConnect(event) {
 		Inspector.Debugger.enable();
 		for (var i in _breakpoints) {
 			var b = _breakpoints[i];
@@ -332,7 +332,7 @@ define(function (require, exports, module) {
 		}
 	}
 
-	function _onSetScripSource(res) {
+	function _onSetScripSource(event, res) {
 		// res = {callFrames, result, script, scriptSource, diff}
 		var lines = _lineLengths(res.scriptSource);
 		
@@ -380,19 +380,21 @@ define(function (require, exports, module) {
 
 	// Init
 	function init() {
-		Inspector.on("connect", _onConnect);
-		Inspector.on("Debugger.breakpointResolved", _onBreakpointResolved);
-		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		Inspector.on("ScriptAgent.setScriptSource", _onSetScripSource);
+		$(Inspector)
+			.on("connect.Breakpoint", _onConnect);
+		$(Inspector.Debugger)
+			.on("breakpointResolved.Breakpoint", _onBreakpointResolved)
+			.on("globalObjectCleared.Breakpoint", _onGlobalObjectCleared);
+		$(ScriptAgent)
+			.on("setScriptSource.Breakpoint", _onSetScripSource);
 		if (Inspector.connected()) _onConnect();
 	}
 
 	// Unload
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("Debugger.breakpointResolved", _onBreakpointResolved);
-		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		Inspector.off("ScriptAgent.setScriptSource", _onSetScripSource);
+		$(Inspector).off(".Breakpoint");
+		$(Inspector.Debugger).off(".Breakpoint");
+		$(ScriptAgent).off(".Breakpoint");
 		$exports.off();
 	}
 

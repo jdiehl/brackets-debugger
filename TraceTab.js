@@ -88,7 +88,9 @@ define(function (require, exports, module) {
 	}
 
 	function onEventTrace(e, trace) {
-		$(trace).on("change", _showEventTrace);
+		// show empty events to support tracepoint-disabled operation
+		_showEventTrace(e, trace);
+		// $(trace).on("change", _showEventTrace);
 	}
 
 	function _traceChildrenForTree(parent) {

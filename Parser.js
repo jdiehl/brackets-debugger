@@ -29,6 +29,7 @@ define(function (require, exports, module) {
 
 	var DocumentManager  = brackets.getModule("document/DocumentManager");
 	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var ScriptAgent = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
 	var Debugger = require("Debugger");
 	var $Debugger = $(Debugger);
@@ -253,7 +254,7 @@ define(function (require, exports, module) {
 		});
 	}
 	
-	function onScriptChanged(res) {
+	function onScriptChanged(event, res) {
 		// script = {callFrames, result, script, scriptSource, diff}
 		var index = documentIndexes[res.script.url];
 		if (! index) { return; }
@@ -376,12 +377,13 @@ define(function (require, exports, module) {
 	function init() {
 		loadEsprima();
 		$Debugger.on("scriptRequested", onScriptRequested);
-		Inspector.on("ScriptAgent.setScriptSource", onScriptChanged);
+		$(ScriptAgent)
+			.on("setScriptSource.Parser", onScriptChanged);
 	}
 
 	function unload() {
 		$Debugger.off("scriptRequested", onScriptRequested);
-		Inspector.off("ScriptAgent.setScriptSource", onScriptChanged);
+		$(ScriptAgent).off(".Parser");
 		if ($script) {
 			$script.remove();
 		}

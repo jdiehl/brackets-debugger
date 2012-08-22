@@ -189,11 +189,16 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Debugger.paused
-	function _onPaused(res) {
+	function _onPaused(event, res) {
 		// res = {callFrames, reason, data}
 
 		// ignore a pause caused by interruption
 		if (_interruptions > 0) {
+			return;
+		}
+
+		// ignore DOM breakpoints (they are handled by the DOMAgent)
+		if (res.reason === "DOM") {
 			return;
 		}
 
@@ -216,7 +221,7 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Debugger.resumed
-	function _onResumed(res) {
+	function _onResumed(event, res) {
 		// res = {}
 
 		// send the "resumed" event with the info from the pause
@@ -242,7 +247,7 @@ define(function (require, exports, module) {
 	}
 
 	// Inspector Event: we are connected to a live session
-	function _onConnect() {
+	function _onConnect(event) {
 		Inspector.Debugger.enable();
 		
 		for (var i = 0; i < events.length; i++) {
@@ -257,20 +262,20 @@ define(function (require, exports, module) {
 	}
 
 	// Inspector Event: we are disconnected
-	function _onDisconnect() {
+	function _onDisconnect(event) {
 		if (!LiveDevelopment.agents.script) {
 			ScriptAgent.unload();
 		}
 	}
 
 	// Inspector Event: Debugger.globalObjectCleared
-	function _onGlobalObjectCleared() {
+	function _onGlobalObjectCleared(event) {
 		// Normally, Chrome is not paused after a reload, so the next pause will be for breakpoints/events
 		exports.paused = false;
 		$exports.triggerHandler("reload");
 	}
 
-	function _onRequestWillBeSent(res) {
+	function _onRequestWillBeSent(event, res) {
 		// res = {requestId, frameId, loaderId, documentURL, request, timestamp, initiator, redirectResponse}
 		var url = res.request.url;
 		// Remove querystring (?foo=bar...)
@@ -281,7 +286,7 @@ define(function (require, exports, module) {
 		$(exports).triggerHandler("scriptRequested", url);
 	}
 
-	function _onSetScriptSource(res) {
+	function _onSetScriptSource(event, res) {
 		// res = {callFrames, result, script, scriptSource, diff}
 		if (res.callFrames && res.callFrames.length) {
 			// todo: update the callframes of the current breakpoint
@@ -292,21 +297,24 @@ define(function (require, exports, module) {
 	
 	// init
 	function init() {
-		Inspector.on("connect", _onConnect);
-		Inspector.on("disconnect", _onDisconnect);
-		Inspector.on("Debugger.paused", _onPaused);
-		Inspector.on("Debugger.resumed", _onResumed);
-		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		Inspector.on("Network.requestWillBeSent", _onRequestWillBeSent);
-		Inspector.on("ScriptAgent.setScriptSource", _onSetScriptSource);
+		$(Inspector)
+			.on("connect.Debugger", _onConnect)
+			.on("disconnect.Debugger", _onDisconnect);
+		$(Inspector.Debugger)
+			.on("paused.Debugger", _onPaused)
+			.on("resumed.Debugger", _onResumed)
+			.on("globalObjectCleared.Debugger", _onGlobalObjectCleared);
+		$(Inspector.Network)
+			.on("requestWillBeSent.Debugger", _onRequestWillBeSent);
+		$(ScriptAgent)
+			.on("setScriptSource.Debugger", _onSetScriptSource);
 	}
 
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("disconnect", _onDisconnect);
-		Inspector.off("Debugger.paused", _onPaused);
-		Inspector.off("Debugger.resumed", _onResumed);
-		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		$(Inspector).off(".Debugger");
+		$(Inspector.Debugger).off(".Debugger");
+		$(Inspector.Network).off(".Debugger");
+		$(ScriptAgent).off(".Debugger");
 		for (var i = 0; i < events.length; i++) {
 			Inspector.DOMDebugger.removeEventListenerBreakpoint(events[i]);
 		}

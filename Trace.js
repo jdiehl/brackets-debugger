@@ -181,7 +181,7 @@ define(function (require, exports, module) {
 				r.reject();
 			} else {
 				// wait for the DOM agent, then resolve the node
-				if (!_DOMReady) Inspector.on("DOMAgent.getDocument", resolve);
+				if (!_DOMReady) $(DOMAgent).one("getDocument", resolve);
 				else resolve();
 			}
 			return r.promise();

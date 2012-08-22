@@ -32,7 +32,9 @@ define(function (require, exports, module) {
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
-	var ENABLE_TRACEPOINTS = true;
+	var ENABLE_EVENTS      = true;
+	var ENABLE_TRACEPOINTS = false;
+	var ENABLE_HOVER       = false;
 
 	// var Context    = require("Context");
 	var Debugger   = require("Debugger");
@@ -203,10 +205,14 @@ define(function (require, exports, module) {
 		Breakpoint.init();
 		Panel.init();
 		ConsoleTab.init();
-		if (ENABLE_TRACEPOINTS) {
+		if (ENABLE_TRACEPOINTS || ENABLE_EVENTS) {
 			TraceTab.init();
+		}
+		if (ENABLE_TRACEPOINTS) {
 			Parser.init();
-			Hover.init();
+			if (ENABLE_HOVER) {
+				Hover.init();
+			}
 		}
 
 		// register for debugger events
@@ -224,7 +230,7 @@ define(function (require, exports, module) {
 		// Right now this would be buggy, though: https://github.com/adobe/brackets/issues/1251
 		$("body").on("click", ".CodeMirror-gutter pre", onLineNumberClick);
 		
-		if (ENABLE_TRACEPOINTS) {
+		if (ENABLE_EVENTS) {
 			$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
 			$btnBreakEvents.click(onToggleBreakEvents);
 			$btnBreakEvents.insertBefore('#main-toolbar .buttons #toolbar-go-live');
@@ -233,10 +239,16 @@ define(function (require, exports, module) {
 
 	// unload
 	function unload() {
-		if (ENABLE_TRACEPOINTS) {
-			Hover.unload();
-			Parser.unload();
+		if (ENABLE_TRACEPOINTS || ENABLE_EVENTS) {
 			TraceTab.unload();
+		}
+		if (ENABLE_TRACEPOINTS) {
+			if (ENABLE_HOVER) {
+				Hover.unload();
+			}
+			Parser.unload();
+		}
+		if (ENABLE_EVENTS) {
 			$btnBreakEvents.remove();
 		}
 		ConsoleTab.unload();

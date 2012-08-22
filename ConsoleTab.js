@@ -148,14 +148,14 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Console.messageAdded
-	function _onMessageAdded(res) {
+	function _onMessageAdded(event, res) {
 		// res = {message}
 		_lastMessage = res.message;
 		_add(_lastMessage.level, _lastMessage);
 	}
 
 	// WebInspector Event: Console.messageRepeatCountUpdated
-	function _onMessageRepeatCountUpdated(res) {
+	function _onMessageRepeatCountUpdated(event, res) {
 		// res = {count}
 		if (_lastMessage) {
 			_add(_lastMessage.level, _lastMessage);
@@ -163,7 +163,7 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Console.messagesCleared
-	function _onMessagesCleared(res) {
+	function _onMessagesCleared(event, res) {
 		// res = {}
 		_lastMessage = null;
 		$output.empty();
@@ -177,12 +177,12 @@ define(function (require, exports, module) {
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onReload() {
+	function _onReload(event) {
 		// assume we're not paused
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onConnect() {
+	function _onConnect(event) {
 		Inspector.Console.enable();
 	}
 
@@ -208,29 +208,27 @@ define(function (require, exports, module) {
 
 		// register for debugger events
 		var $Debugger = $(Debugger);
-		$Debugger.on("paused", _onPaused);
-		$Debugger.on("resumed", _onResumed);
-		$Debugger.on("reload", _onReload);
+		$Debugger.on("paused.ConsoleTab", _onPaused);
+		$Debugger.on("resumed.ConsoleTab", _onResumed);
+		$Debugger.on("reload.ConsoleTab", _onReload);
 		
 		// configure the inspector
-		Inspector.on("Console.messageAdded", _onMessageAdded);
-		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
-		Inspector.on("Console.messagesCleared", _onMessagesCleared);
-		Inspector.on("connect", _onConnect);
+		$(Inspector)
+			.on("connect.ConsoleTab", _onConnect);
+		$(Inspector.Console)
+			.on("messageAdded.ConsoleTab", _onMessageAdded)
+			.on("messageRepeatCountUpdated.ConsoleTab", _onMessageRepeatCountUpdated)
+			.on("messagesCleared.ConsoleTab", _onMessagesCleared);
 		if (Inspector.connected()) _onConnect();
 	}
 
 	function unload() {
 		// unregister debugger events
 		var $Debugger = $(Debugger);
-		$Debugger.off("paused", _onPaused);
-		$Debugger.off("resumed", _onResumed);
-		$Debugger.off("reload", _onReload);
+		$Debugger.off(".ConsoleTab");
 		
-		Inspector.off("Console.messageAdded", _onMessageAdded);
-		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
-		Inspector.off("Console.messagesCleared", _onMessagesCleared);
-		Inspector.off("connect", _onConnect);
+		$(Inspector).off(".ConsoleTab");
+		$(Inspector.Console).off(".ConsoleTab");
 	}
 
 	// public methods

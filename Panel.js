@@ -94,15 +94,15 @@ define(function (require, exports, module) {
 		// attach the panel to the main view's content
 		$(".main-view .content").append($panel);
 
-		Inspector.on("connect", _onConnect);
-		Inspector.on("disconnect", _onDisconnect);
+		$(Inspector)
+			.on("connect.Panel", _onConnect)
+			.on("disconnect.Panel", _onDisconnect);
 
 		if (Inspector.connected()) _onConnect();
 	}
 
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("disconnect", _onDisconnect);
+		$(Inspector).off(".Panel");
 		$panel.remove();
 		EditorManager.resizeEditor();
 
