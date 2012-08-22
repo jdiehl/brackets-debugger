@@ -290,13 +290,6 @@ define(function (require, exports, module) {
 		$(exports).triggerHandler("scriptRequested", url);
 	}
 
-	function _onSetScriptSource(event, res) {
-		// res = {callFrames, result, script, scriptSource, diff}
-		if (res.callFrames && res.callFrames.length) {
-			// todo: update the callframes of the current breakpoint
-		}
-	}
-
 	/** Init Functions *******************************************************/
 	
 	// init
@@ -310,15 +303,12 @@ define(function (require, exports, module) {
 			.on("globalObjectCleared.Debugger", _onGlobalObjectCleared);
 		$(Inspector.Network)
 			.on("requestWillBeSent.Debugger", _onRequestWillBeSent);
-		$(ScriptAgent)
-			.on("setScriptSource.Debugger", _onSetScriptSource);
 	}
 
 	function unload() {
 		$(Inspector).off(".Debugger");
 		$(Inspector.Debugger).off(".Debugger");
 		$(Inspector.Network).off(".Debugger");
-		$(ScriptAgent).off(".Debugger");
 		for (var i = 0; i < events.length; i++) {
 			Inspector.DOMDebugger.removeEventListenerBreakpoint(events[i]);
 		}

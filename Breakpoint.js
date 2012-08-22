@@ -332,6 +332,8 @@ define(function (require, exports, module) {
 		}
 	}
 
+	// Todo: this is no longer attached to any event
+	// It should be eventually attached to the Document's "change" event
 	function _onSetScripSource(event, res) {
 		// res = {callFrames, result, script, scriptSource, diff}
 		var lines = _lineLengths(res.scriptSource);
@@ -385,8 +387,6 @@ define(function (require, exports, module) {
 		$(Inspector.Debugger)
 			.on("breakpointResolved.Breakpoint", _onBreakpointResolved)
 			.on("globalObjectCleared.Breakpoint", _onGlobalObjectCleared);
-		$(ScriptAgent)
-			.on("setScriptSource.Breakpoint", _onSetScripSource);
 		if (Inspector.connected()) _onConnect();
 	}
 
@@ -394,7 +394,6 @@ define(function (require, exports, module) {
 	function unload() {
 		$(Inspector).off(".Breakpoint");
 		$(Inspector.Debugger).off(".Breakpoint");
-		$(ScriptAgent).off(".Breakpoint");
 		$exports.off();
 	}
 
