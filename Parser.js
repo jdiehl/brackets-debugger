@@ -239,11 +239,13 @@ define(function (require, exports, module) {
 		if (url.slice(-7) === ".min.js") { return; }
 		if (documentIndexes[url]) { return; }
 
-		// Interrupt execution
+		// Extract the path, strip the third slash when on Windows
+		var path = url.slice(brackets.platform === "win" ? 8 : 7);
+
 		Debugger.interrupt(function () {
 			var deferred = new $.Deferred();
 			// Load document
-			DocumentManager.getDocumentForPath(url.slice(7)).done(function (doc) {
+			DocumentManager.getDocumentForPath(path).done(function (doc) {
 				doc.url = doc.url || url;
 				// Parse the document
 				var index = createIndexForDocument(doc);

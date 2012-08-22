@@ -192,6 +192,10 @@ define(function (require, exports, module) {
 	function _onPaused(event, res) {
 		// res = {callFrames, reason, data}
 
+		// we don't process DOM triggered pauses at the moment
+		// since those breakpoints resume automatically, they are also useless for everything else: just ignore them
+		if (res.reason === "DOM") { return; }
+
 		// ignore a pause caused by interruption
 		if (_interruptions > 0) {
 			return;
