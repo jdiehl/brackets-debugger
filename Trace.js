@@ -30,6 +30,7 @@ define(function (require, exports, module) {
 	var Inspector   = brackets.getModule("LiveDevelopment/Inspector/Inspector");
 	var ScriptAgent = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var DOMAgent    = brackets.getModule("LiveDevelopment/Agents/DOMAgent");
+	var DocumentManager = brackets.getModule("document/DocumentManager");
 	
 	var Breakpoint = require("Breakpoint");
 
@@ -53,6 +54,7 @@ define(function (require, exports, module) {
 
 	var _lastParent;
 	var _rootTraces = [];
+	var _tracesByUrl = {};
 
 	// attach a new trace to the trace and track new root traces
 	function _setupTraceTree(trace) {
@@ -100,6 +102,11 @@ define(function (require, exports, module) {
 		if (this.type === "event") {
 			this._attachToDOM();
 		}
+
+		if (!_tracesByUrl[this.location.url]) {
+			_tracesByUrl[this.location.url] = [];
+		}
+		_tracesByUrl[this.location.url].push(this);
 	}
 
 	Trace.prototype = {
@@ -223,12 +230,53 @@ define(function (require, exports, module) {
 			}
 		},
 
+		// process a change of the underlying document
+		processChange: function (change) {
+			var line = this.location.lineNumber;
+			if (line > change.from.line) {
+				// change occurred before the trace, shift it by the number of lines
+				this.location.lineNumber += change.from.line - change.to.line + change.text.length - 1;
+			}
+			// todo: this breaks if the change touches the line of the trace
+		}
+
 	};
+
+	var _doc;
+	function _onDocumentChange(event, doc, change) {
+		var traces = _tracesByUrl[doc.url];
+		for (var i in traces) {
+			traces[i].processChange(change);
+		}
+		if (change.next) {
+			_onDocumentChange(event, doc, change.next);
+		}
+	}
+
+	function _onCurrentDocumentChange(event, doc) {
+		if (_doc) {
+			$(_doc).off("change", _onDocumentChange);
+		}
+		_doc = DocumentManager.getCurrentDocument();
+		if (_doc) {
+			$(_doc).on("change", _onDocumentChange);
+		}
+	}
 
 	function rootTraces() {
 		return _rootTraces;
 	}
 
+	function init() {
+		$(DocumentManager).on("currentDocumentChange", _onCurrentDocumentChange);
+		brackets.ready(_onCurrentDocumentChange);
+	}
+
+	function unload() {
+		$(DocumentManager).off("currentDocumentChange", _onCurrentDocumentChange);
+	}
+
 	exports.Trace = Trace;
 	exports.rootTraces = rootTraces;
+	exports.init = init;
 });

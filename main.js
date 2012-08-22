@@ -44,6 +44,7 @@ define(function (require, exports, module) {
 	var Breakpoint = require("Breakpoint");
 	var Parser     = require("Parser");
 	var Hover      = require("Hover");
+	var Trace      = require("Trace");
 
 	var $style;
 	var traceLineTimeouts = {};
@@ -205,6 +206,7 @@ define(function (require, exports, module) {
 		Breakpoint.init();
 		Panel.init();
 		ConsoleTab.init();
+		Trace.init();
 		if (ENABLE_TRACEPOINTS || ENABLE_EVENTS) {
 			TraceTab.init();
 		}
@@ -255,6 +257,7 @@ define(function (require, exports, module) {
 		Panel.unload();
 		Breakpoint.unload();
 		Debugger.unload();
+		Trace.unload();
 		$style.remove();
 		$("body").off("click", ".CodeMirror-gutter pre", onLineNumberClick);
 	}
