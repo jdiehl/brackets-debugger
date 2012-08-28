@@ -31,6 +31,7 @@ define(function (require, exports, module) {
 	var ScriptAgent = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var DOMAgent    = brackets.getModule("LiveDevelopment/Agents/DOMAgent");
 	var DocumentManager = brackets.getModule("document/DocumentManager");
+	var AppInit         = brackets.getModule("utils/AppInit");
 	
 	var Breakpoint = require("Breakpoint");
 
@@ -269,7 +270,7 @@ define(function (require, exports, module) {
 
 	function init() {
 		$(DocumentManager).on("currentDocumentChange", _onCurrentDocumentChange);
-		brackets.ready(_onCurrentDocumentChange);
+		AppInit.appReady(_onCurrentDocumentChange);
 	}
 
 	function unload() {
