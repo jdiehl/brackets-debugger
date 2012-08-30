@@ -254,11 +254,6 @@ define(function (require, exports, module) {
 			Inspector.DOMDebugger.setEventListenerBreakpoint(events[i]);
 		}
 		Inspector.DOMDebugger.setInstrumentationBreakpoint("timerFired");
-		
-		// load the script agent if necessary
-		if (!LiveDevelopment.agents.script) {
-			ScriptAgent.load();
-		}
 	}
 
 	// Inspector Event: we are disconnected
