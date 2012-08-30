@@ -35,8 +35,6 @@ define(function (require, exports, module) {
 	
 	var Breakpoint = require("Breakpoint");
 
-	var _DOMReady = false;
-
 	// compare two locations and return true if both are equal
 	function _locationsEqual(l1, l2) {
 		var r = l1.scriptId !== "undefined" ? l1.scriptId === l2.scriptId : (l1.url && l2.url && l1.url === l2.url);
@@ -179,7 +177,6 @@ define(function (require, exports, module) {
 					var node = DOMAgent.nodeWithId(res.nodeId);
 					if (node) r.resolve(node);
 					else r.reject();
-					_DOMReady = true;
 				});
 			}
 
@@ -189,8 +186,11 @@ define(function (require, exports, module) {
 				r.reject();
 			} else {
 				// wait for the DOM agent, then resolve the node
-				if (!_DOMReady) $(DOMAgent).one("getDocument", resolve);
-				else resolve();
+				if (!DOMAgent.root) {
+					$(DOMAgent).one("getDocument", resolve);
+				} else {
+					resolve();
+				}
 			}
 			return r.promise();
 		},
