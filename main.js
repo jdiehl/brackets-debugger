@@ -29,6 +29,7 @@ define(function (require, exports, module) {
 
 	var DocumentManager = brackets.getModule("document/DocumentManager");
 	var EditorManager   = brackets.getModule("editor/EditorManager");
+	var AppInit         = brackets.getModule("utils/AppInit");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
 
@@ -265,5 +266,5 @@ define(function (require, exports, module) {
 	exports.init = init;
 	exports.unload = unload;
 
-	$(init);
+	AppInit.htmlReady(init);
 });
