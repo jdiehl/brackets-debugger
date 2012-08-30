@@ -232,7 +232,7 @@ define(function (require, exports, module) {
 		// Right now this would be buggy, though: https://github.com/adobe/brackets/issues/1251
 		$("body").on("click", ".CodeMirror-gutter pre", onLineNumberClick);
 		
-		if (ENABLE_EVENTS) {
+		if (ENABLE_TRACEPOINTS) {
 			$btnBreakEvents = $("<a>").text("❚❚").attr({ href: "#", id: "jdiehl-debugger-breakevents" });
 			$btnBreakEvents.click(onToggleBreakEvents);
 			$btnBreakEvents.insertBefore('#main-toolbar .buttons #toolbar-go-live');
