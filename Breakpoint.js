@@ -387,7 +387,6 @@ define(function (require, exports, module) {
 		$(Inspector.Debugger)
 			.on("breakpointResolved.Breakpoint", _onBreakpointResolved)
 			.on("globalObjectCleared.Breakpoint", _onGlobalObjectCleared);
-		if (Inspector.connected()) _onConnect();
 	}
 
 	// Unload
