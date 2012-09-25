@@ -28,7 +28,6 @@ define(function (require, exports, module) {
 	'use strict';
 
 	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
-	var Trace = require("Trace");
 
 	var _breakpoints = {};
 
@@ -37,23 +36,11 @@ define(function (require, exports, module) {
 	var $exports = $(exports);
 
 	// Breakpoints Class
-	function Breakpoint(location, condition, type) {
-		if (type === undefined) type = "user";
+	function Breakpoint(location, condition) {
 		this.location = location;
 		this.condition = condition;
-		this.type = type;
-		this.trace = [];
-
 		this.number = nextNumber++;
 		this.active = false;
-
-		if (type !== "user") {
-			this.haltOnPause = false;
-			this.traceOnPause = true;
-		} else {
-			this.haltOnPause = true;
-			this.traceOnPause = false;
-		}
 	}
 
 	// Breakpoints Methods
@@ -129,125 +116,15 @@ define(function (require, exports, module) {
 				this.resolvedLocations.push(location);
 				$this.triggerHandler("resolve", { breakpoint: this, location: location });
 			}
-		},
-
-		// reset the trace
-		_reset: function () {
-			this.trace = [];
-		},
-
-		// trigger paused
-		triggerPaused: function (callFrames) {
-			if (! this.traceOnPause) { return; }
-			this.trace.push(new Trace.Trace(this.type, callFrames));
-		},
-
-		traceForEvent: function (event) {
-			if (! event || ! this.trace) { return; }
-			var trace = this.trace[this.trace.length - 1];
-			if (! trace.childOf(event.callFrames)) { return; }
-			return trace;
-		},
-	
-		resolveVariable: function (variable, constraints) {
-			if (! this.trace) { return; }
-			
-			var result = new $.Deferred();
-
-			var trace = this.trace[this.trace.length - 1];
-			if (! trace || trace.callFrames.length === 0) { return result.reject(); }
-			
-			var callFrameIndex = 0;
-			var callFrame = trace.callFrames[callFrameIndex];
-
-			if (variable === "this" && callFrame.this) {
-				resolveVariable(callFrame.this, constraints).done(result.resolve);
-			}
-			else {
-				trace.resolveCallFrame(callFrameIndex).done(function () {
-					var scopeChain = callFrame.scopeChain;
-					for (var i = 0; i < scopeChain.length; i++) {
-						var vars = scopeChain[i].resolved;
-						if (vars && vars[variable]) {
-							resolveVariable(vars[variable], constraints).done(result.resolve);
-							return;
-						}
-					}
-					result.reject();
-				});
-			}
-
-			return result.promise();
 		}
 	};
 
-	function resolveVariable(value, constraints, cache, depth) {
-		if (! cache) { cache = {}; }
-		if (! depth) { depth = 0; }
-		
-		var result = new $.Deferred();
-
-		var ignore = !value || (value.type == "object" && (value.className == "Window" || value.className == "Document"));
-		if (ignore || ! value.objectId) {
-			result.resolve(value);
-		}
-		else if (cache[value.objectId]) {
-			result.resolve(cache[value.objectId]);
-		}
-		else {
-			cache[value.objectId] = value;
-			if (! constraints.maxDepth || depth < constraints.maxDepth) {
-				Inspector.Runtime.getProperties(value.objectId, true, function (res) {
-					var pending = [];
-					var resolved = value.value = {};
-
-					var used = 0;
-					for (var i = 0; i < res.result.length; i++) {
-						var info = res.result[i];
-						if (! info.enumerable) { continue; }
-						used++;
-						if (constraints.maxChildren && used > constraints.maxChildren) {
-							resolved[""] = { special: "abbreviated" };
-							break;
-						}
-						resolved[info.name] = info.value;
-						pending.push(resolveVariable(info.value, constraints, cache, depth + 1));
-					}
-
-					$.when.apply(null, pending).done(function () {
-						if (value.type === "function") {
-							Inspector.Debugger.getFunctionDetails(value.objectId, function (res) {
-								value.details = res.details;
-								result.resolve(value);
-							});
-						}
-						else {
-							result.resolve(value);
-						}
-					});
-				});
-			} else {
-				result.resolve(value);
-			}
-		}
-
-		return result.promise();
-	}
-	
 	// Inspector Event: breakpoint resolved
 	function _onBreakpointResolved(res) {
 		// res = {breakpointId, location}
 		var breakpoint = findById(res.breakpointId);
 		if (breakpoint) {
 			breakpoint._addResolvedLocations([res.location]);
-		}
-	}
-
-	// Inspector Event: Debugger.globalObjectCleared
-	function _onGlobalObjectCleared() {
-		// Reset the trace array for all tracepoints
-		for (var i in _breakpoints) {
-			_breakpoints[i]._reset();
 		}
 	}
 
@@ -264,17 +141,15 @@ define(function (require, exports, module) {
 
 	// Init
 	function init() {
-		Inspector.on("connect", _onConnect);
-		Inspector.on("Debugger.breakpointResolved", _onBreakpointResolved);
-		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		$(Inspector).on("connect.debugger", _onConnect);
+		$(Inspector.Debugger).on("breakpointResolved.debugger", _onBreakpointResolved);
 		if (Inspector.connected()) _onConnect();
 	}
 
 	// Unload
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("Debugger.breakpointResolved", _onBreakpointResolved);
-		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
+		$(Inspector).off(".debugger");
+		$(Inspector.Debugger).off(".debugger");
 		$exports.off();
 	}
 

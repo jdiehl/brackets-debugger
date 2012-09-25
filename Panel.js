@@ -72,11 +72,11 @@ define(function (require, exports, module) {
 		return $button;
 	}
 	
-	function _onConnect() {
+	function _onConnect(event) {
 		toggle(true);
 	}
 
-	function _onDisconnect() {
+	function _onDisconnect(event) {
 		toggle(false);
 	}
 
@@ -94,15 +94,14 @@ define(function (require, exports, module) {
 		// attach the panel to the main view's content
 		$(".main-view .content").append($panel);
 
-		Inspector.on("connect", _onConnect);
-		Inspector.on("disconnect", _onDisconnect);
+		$(Inspector).on("connect.debugger", _onConnect);
+		$(Inspector).on("disconnect.debugger", _onDisconnect);
 
 		if (Inspector.connected()) _onConnect();
 	}
 
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("disconnect", _onDisconnect);
+		$(Inspector).off(".debugger");
 		$panel.remove();
 		EditorManager.resizeEditor();
 

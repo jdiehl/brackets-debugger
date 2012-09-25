@@ -179,12 +179,12 @@ define(function (require, exports, module) {
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onReload() {
+	function _onReload(event) {
 		// assume we're not paused
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onConnect() {
+	function _onConnect(event) {
 		Inspector.Console.enable();
 	}
 
@@ -215,10 +215,10 @@ define(function (require, exports, module) {
 		$Debugger.on("reload", _onReload);
 		
 		// configure the inspector
-		Inspector.on("Console.messageAdded", _onMessageAdded);
-		Inspector.on("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
-		Inspector.on("Console.messagesCleared", _onMessagesCleared);
-		Inspector.on("connect", _onConnect);
+		$(Inspector.Console).on("messageAdded.debugger", _onMessageAdded);
+		$(Inspector.Console).on("messageRepeatCountUpdated.debugger", _onMessageRepeatCountUpdated);
+		$(Inspector.Console).on("messagesCleared.debugger", _onMessagesCleared);
+		$(Inspector).on("connect.debugger", _onConnect);
 		if (Inspector.connected()) _onConnect();
 	}
 
@@ -229,10 +229,8 @@ define(function (require, exports, module) {
 		$Debugger.off("resumed", _onResumed);
 		$Debugger.off("reload", _onReload);
 		
-		Inspector.off("Console.messageAdded", _onMessageAdded);
-		Inspector.off("Console.messageRepeatCountUpdated", _onMessageRepeatCountUpdated);
-		Inspector.off("Console.messagesCleared", _onMessagesCleared);
-		Inspector.off("connect", _onConnect);
+		$(Inspector).off(".debugger");
+		$(Inspector.Console).off(".debugger");
 	}
 
 	// public methods

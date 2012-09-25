@@ -28,47 +28,23 @@ define(function (require, exports, module) {
 	'use strict';
 
 	var Inspector	= brackets.getModule("LiveDevelopment/Inspector/Inspector"),
-		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent"),
-		LiveDevelopment = brackets.getModule("LiveDevelopment/LiveDevelopment");
+		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 
 	var Breakpoint = require("Breakpoint");
-	var Trace = require("Trace");
-	var events = require("events");
 	
 	var $exports = $(exports);
 	var _paused;
-	var _breakOnTracepoints = false;
-
-	var _interruptions = 0;
-	var _interruptionResult;
-	var _pausedByInterruption = false;
-
-	var _stayPaused = false;
-	var _pauseAfterReload = false;
 
 	/** Actions **************************************************************/
 
-	// pause execution until the deferred is complete
-	function interrupt(deferred) {
-		_interruptions++;
-		if (_interruptions === 1) {
-			_pausedByInterruption = true;
-			Inspector.Debugger.pause();
-		}
-		deferred.then(_onInterruptionEnd);
-	}
-
-    // pause the debugger
+	// pause the debugger
 	function pause() {
-		_stayPaused = true;
 		// if there is no pause before the next reload, press pause again
-		_pauseAfterReload = true;
 		Inspector.Debugger.pause();
 	}
 
 	// resume the debugger
 	function resume() {
-		_stayPaused = false;
 		Inspector.Debugger.resume();
 	}
 
@@ -85,12 +61,6 @@ define(function (require, exports, module) {
 	// step out
 	function stepOut() {
 		Inspector.Debugger.stepOut();
-	}
-
-	function setTracepoint(location, type) {
-		var breakpoint = new Breakpoint.Breakpoint(location, undefined, type);
-		breakpoint.set();
-		return breakpoint;
 	}
 
 	// toggle a breakpoint
@@ -115,104 +85,29 @@ define(function (require, exports, module) {
 		}
 	}
 
-	// break on tracepoints
-	function breakOnTracepoints() {
-		return _breakOnTracepoints;
-	}
-
-	// enable or disable break on tracepoints
-	function setBreakOnTracepoints(flag) {
-		_breakOnTracepoints = flag;
-	}
-
 	/** Event Handlers *******************************************************/
 
-	// continue execution if all interruptions have ended
-	function _onInterruptionEnd() {
-		_interruptions--;
-		// return if there are ongoing interruptions or if we did not pause during interruption
-		if (_interruptions === 0 || ! _interruptionResult) { return; }
-		
-		// now process the result of a pause during interruption
-		var result = _interruptionResult;
-		_interruptionResult = null;
-		_onPaused(result);
-	}
-
-	function _onBreakpointPause(res, info) {
-		// find the breakpoints at that location
-		var breakpoints = info.breakpoints = Breakpoint.findResolved(info.location);
-
-		// determine whether to actually halt by asking all breakpoints
-		var halt = false;
-		var trace, b;
-		for (var i in breakpoints) {
-			b = breakpoints[i];
-			b.triggerPaused(info.callFrames);
-			if (_breakOnTracepoints || b.haltOnPause) halt = true;
-		}
-
-		return halt;
-	}
-
-	function _onEventPause(res, info) {
-		// E.g. listener:click, instrumentation:timerFired
-		var eventName = res.data.eventName;
-		var pos = eventName.indexOf(":");
-		if (pos !== -1) { eventName = eventName.slice(pos + 1); }
-		
-		var trace = new Trace.Trace("event", res.callFrames, eventName);
-		$exports.triggerHandler("eventTrace", trace);
-
-		return false;
-	}
-
 	// WebInspector Event: Debugger.paused
-	function _onPaused(res) {
+	function _onPaused(event, res) {
 		// res = {callFrames, reason, data}
 
-		// if this is the first pause since interruption
-		if (_pausedByInterruption) {
-			_pausedByInterruption = false;
-			// if there are still unfinished interruptions
-			if (_interruptions) {
-				// defer handling of this pause until all interruptions are over
-				// by then the tracepoints should be set so the handlers below can find them
-				// the last interruption will call _onPaused again with res = _interruptionResult
-				_interruptionResult = res;
-				return;
-			}
-			// the interruptions are already over, so handle this like any other pause
-		}
+		// ignore DOM breakpoints - they are handled by the ScriptAgent
+		if (res.reason === "DOM") return;
 
-		// pressing the pause button has succeeded, so we don't need to do it again after a reload
-		_pauseAfterReload = false;
-		
 		// gather some info about this pause
 		_paused = { location: res.callFrames[0].location, callFrames: res.callFrames };
 
-		// determine whether to halt
-		var handler;
-		if (res.reason === "other")              { handler = _onBreakpointPause; }
-		else if (res.reason === "EventListener") { handler = _onEventPause; }
-		_paused.halt = (handler ? handler(res, _paused) : false) || _stayPaused;
-		// Stepping triggers resume, then pause, and we need to step again then
-		if (! _stayPaused) { _stayPaused = _paused.halt; }
-
 		// trigger the "paused" event
 		$exports.triggerHandler("paused", _paused);
-		
-		// resume if necessary
-		if (! _paused.halt) { Inspector.Debugger.resume(); }
 	}
 
 	// WebInspector Event: Debugger.resumed
-	function _onResumed(res) {
+	function _onResumed(event, res) {
 		// res = {}
 
 		// send the "resumed" event with the info from the pause
 		if (_paused) {
-			$exports.triggerHandler("resumed", [_paused, _stayPaused]);
+			$exports.triggerHandler("resumed", _paused);
 			_paused = undefined;
 		}
 	}
@@ -233,70 +128,27 @@ define(function (require, exports, module) {
 	}
 
 	// Inspector Event: we are connected to a live session
-	function _onConnect() {
+	function _onConnect(event) {
 		Inspector.Debugger.enable();
-		
-		for (var i = 0; i < events.length; i++) {
-			Inspector.DOMDebugger.setEventListenerBreakpoint(events[i]);
-		}
-		Inspector.DOMDebugger.setInstrumentationBreakpoint("timerFired");
-		
-		// load the script agent if necessary
-		if (!LiveDevelopment.agents.script) {
-			ScriptAgent.load();
-		}
 	}
 
 	// Inspector Event: we are disconnected
-	function _onDisconnect() {
-		if (!LiveDevelopment.agents.script) {
-			ScriptAgent.unload();
-		}
-	}
-
-	// Inspector Event: Debugger.globalObjectCleared
-	function _onGlobalObjectCleared() {
-		// Normally, Chrome is not paused after a reload, so the next pause will be for breakpoints/events
-		_stayPaused = false;
-		// After pressing the pause button the page was reloaded before a pause occured: pause now
-		if (_pauseAfterReload) { pause(); }
-		$exports.triggerHandler("reload");
-	}
-
-	function _onRequestWillBeSent(res) {
-		// res = {requestId, frameId, loaderId, documentURL, request, timestamp, initiator, redirectResponse}
-		var url = res.request.url;
-		// Remove querystring (?foo=bar...)
-		url = url.replace(/\?.*/, "");
-		// Get the extension
-		var extension = url.replace(/^.*\./, "");
-		if (extension !== "js") { return; }
-		$(exports).triggerHandler("scriptRequested", url);
+	function _onDisconnect(event) {
 	}
 
 	/** Init Functions *******************************************************/
 	
 	// init
 	function init() {
-		Inspector.on("connect", _onConnect);
-		Inspector.on("disconnect", _onDisconnect);
-		Inspector.on("Debugger.paused", _onPaused);
-		Inspector.on("Debugger.resumed", _onResumed);
-		Inspector.on("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		Inspector.on("Network.requestWillBeSent", _onRequestWillBeSent);
-
+		$(Inspector).on("connect.debugger", _onConnect);
+		$(Inspector).on("disconnect.debugger", _onDisconnect);
+		$(Inspector.Debugger).on("paused.debugger", _onPaused);
+		$(Inspector.Debugger).on("resumed.debugger", _onResumed);
 	}
 
 	function unload() {
-		Inspector.off("connect", _onConnect);
-		Inspector.off("disconnect", _onDisconnect);
-		Inspector.off("Debugger.paused", _onPaused);
-		Inspector.off("Debugger.resumed", _onResumed);
-		Inspector.off("Debugger.globalObjectCleared", _onGlobalObjectCleared);
-		for (var i = 0; i < events.length; i++) {
-			Inspector.DOMDebugger.removeEventListenerBreakpoint(events[i]);
-		}
-		Inspector.DOMDebugger.removeInstrumentationBreakpoint("timerFired");
+		$(Inspector).off(".debugger");
+		$(Inspector.Debugger).off(".debugger");
 		$exports.off();
 		_onDisconnect();
 	}
@@ -304,15 +156,11 @@ define(function (require, exports, module) {
 	// public methods
 	exports.init = init;
 	exports.unload = unload;
-	exports.interrupt = interrupt;
 	exports.pause = pause;
 	exports.resume = resume;
 	exports.stepOver = stepOver;
 	exports.stepInto = stepInto;
 	exports.stepOut = stepOut;
 	exports.toggleBreakpoint = toggleBreakpoint;
-	exports.setTracepoint = setTracepoint;
 	exports.evaluate = evaluate;
-	exports.breakOnTracepoints = breakOnTracepoints;
-	exports.setBreakOnTracepoints = setBreakOnTracepoints;
 });
