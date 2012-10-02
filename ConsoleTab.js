@@ -34,6 +34,7 @@ define(function (require, exports, module) {
 
 	var Debugger = require("Debugger");
 	var Panel    = require("Panel");
+	var Main     = require("main");
 
 	var tabId                  = "jdiehl-debugger-console";
 	var outputContextMenuId    = "jdiehl-debugger-console-output";
@@ -148,14 +149,14 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Console.messageAdded
-	function _onMessageAdded(res) {
+	function _onMessageAdded(event, res) {
 		// res = {message}
 		_lastMessage = res.message;
 		_add(_lastMessage.level, _lastMessage);
 	}
 
 	// WebInspector Event: Console.messageRepeatCountUpdated
-	function _onMessageRepeatCountUpdated(res) {
+	function _onMessageRepeatCountUpdated(event, res) {
 		// res = {count}
 		if (_lastMessage) {
 			_add(_lastMessage.level, _lastMessage);
@@ -163,19 +164,19 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Console.messagesCleared
-	function _onMessagesCleared(res) {
+	function _onMessagesCleared(event, res) {
 		// res = {}
 		_lastMessage = null;
 		$output.empty();
 	}
 
 	function _onPaused(event, info) {
-		if (! info.halt) { return; }
+		if (! info.halt && Main.ENABLE_TRACEPOINTS) { return; }
 		_updateButtonsForPauseState(true);
 	}
 
 	function _onResumed(event, info, stayPaused) {
-		if (! info.halt || stayPaused) { return; }
+		if ((! info.halt && Main.ENABLE_TRACEPOINTS) || stayPaused) { return; }
 		_updateButtonsForPauseState(false);
 	}
 
@@ -207,6 +208,7 @@ define(function (require, exports, module) {
 		$btnStepOver = Panel.addButton($('<button class="stepOver" title="Step Over">').on("mousedown", _onToolbarButtonPressed));
 		$btnStepInto = Panel.addButton($('<button class="stepInto" title="Step Into">').on("mousedown", _onToolbarButtonPressed));
 		$btnStepOut  = Panel.addButton($('<button class="stepOut" title="Step Out">').on("mousedown", _onToolbarButtonPressed));
+		_updateButtonsForPauseState(false);
 
 		// register for debugger events
 		var $Debugger = $(Debugger);

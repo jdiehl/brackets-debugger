@@ -120,7 +120,7 @@ define(function (require, exports, module) {
 	};
 
 	// Inspector Event: breakpoint resolved
-	function _onBreakpointResolved(res) {
+	function _onBreakpointResolved(event, res) {
 		// res = {breakpointId, location}
 		var breakpoint = findById(res.breakpointId);
 		if (breakpoint) {

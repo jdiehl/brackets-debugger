@@ -182,6 +182,7 @@ define(function (require, exports, module) {
 
 	exports.init = init;
 	exports.unload = unload;
+	exports.ENABLE_TRACEPOINTS = ENABLE_TRACEPOINTS;
 
 	AppInit.appReady(init);
 });
