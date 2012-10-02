@@ -113,14 +113,14 @@ define(function (require, exports, module) {
 	}
 
 	// Breakpoint Event: breakpoint resolved
-	function _onResolveBreakpoint(event, res) {
-		res.location.url = ScriptAgent.scriptWithId(res.location.scriptId).url;
-		$exports.triggerHandler('setBreakpoint', res.location);
+	function _onResolveBreakpoint(event, breakpoint, location) {
+		location.url = ScriptAgent.scriptWithId(location.scriptId).url;
+		$exports.triggerHandler('setBreakpoint', location);
 	}
 
 	// Breakpoint Event: breakpoint removed
-	function _onRemoveBreakpoint(event, res) {
-		var locations = res.breakpoint.resolvedLocations;
+	function _onRemoveBreakpoint(event, breakpoint) {
+		var locations = breakpoint.resolvedLocations;
 		for (var i in locations) {
 			locations[i].url = ScriptAgent.scriptWithId(locations[i].scriptId).url;
 			$exports.triggerHandler('removeBreakpoint', locations[i]);

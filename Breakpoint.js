@@ -57,7 +57,7 @@ define(function (require, exports, module) {
 				// res = {breakpointId, locations}
 				self.id = res.breakpointId;
 				self.resolvedLocations = [];
-				$(self).triggerHandler("set", { breakpoint: self });
+				$(self).triggerHandler("set", [self]);
 				self._addResolvedLocations(res.locations);
 			});
 		},
@@ -70,7 +70,7 @@ define(function (require, exports, module) {
 			var self = this;
 			Inspector.Debugger.removeBreakpoint(this.id, function (res) {
 				// res = {}
-				$(self).triggerHandler("remove", { breakpoint: self });
+				$(self).triggerHandler("remove", [self]);
 				delete self.id;
 				delete self.resolvedLocations;
 			});
@@ -114,7 +114,7 @@ define(function (require, exports, module) {
 				location = locations[i];
 				if (this.matchesResolved(location)) continue;
 				this.resolvedLocations.push(location);
-				$this.triggerHandler("resolve", { breakpoint: this, location: location });
+				$this.triggerHandler("resolve", [this, location]);
 			}
 		}
 	};
