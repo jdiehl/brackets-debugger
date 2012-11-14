@@ -79,27 +79,37 @@ define(function (require, exports, module) {
 		return script.url;
 	}
 	
-	/** Find this extension's directory relative to the brackets root */
-	function _extensionDirForBrowser() {
-		var bracketsIndex = window.location.pathname;
-		var bracketsDir   = bracketsIndex.substr(0, bracketsIndex.lastIndexOf('/') + 1);
-		var extensionDir  = bracketsDir + require.toUrl('./');
-
-		return extensionDir;
+	/** Find the URL to this extension's directory */
+	function _extensionDirUrl() {
+		var url = brackets.platform === "win" ? "file:///" : "file://localhost";
+		url += require.toUrl("./").replace(/\.\/$/, "");
+		
+		return url;
 	}
 
 	/** Loads a less file as CSS into the document */
 	function _loadLessFile(file, dir) {
+		var result = $.Deferred();
+
 		// Load the Less code
-		$.get(dir + file, function (code) {
-			// Parse it
-			var parser = new less.Parser({ filename: file, paths: [dir] });
-			parser.parse(code, function onParse(err, tree) {
-				console.assert(!err, err);
-				// Convert it to CSS and append that to the document head
-				$style = $("<style>").text(tree.toCSS()).appendTo(window.document.head);
-			});
-		});
+		$.get(dir + file)
+			.done(function (code) {
+				// Parse it
+				var parser = new less.Parser({ filename: file, paths: [dir] });
+				parser.parse(code, function onParse(err, tree) {
+					console.assert(!err, err);
+					// Convert it to CSS and append that to the document head
+					var $node = $("<style>").text(tree.toCSS()).appendTo(window.document.head);
+					console.log($node.text());
+					result.resolve($node);
+				});
+			})
+			.fail(function (request, error) {
+				result.reject(error);
+			})
+		;
+		
+		return result.promise();
 	}
 
     /** Sets a line class and removes it after a delay */
@@ -200,7 +210,9 @@ define(function (require, exports, module) {
 		ld.enableAgent("edit");
 
 		// load styles
-		_loadLessFile("debugger.less", _extensionDirForBrowser());
+		_loadLessFile("debugger.less", _extensionDirUrl()).done(function ($node) {
+			$style = $node;
+		});
 
 		// init modules
 		Debugger.init();
