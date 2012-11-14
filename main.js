@@ -87,7 +87,6 @@ define(function (require, exports, module) {
 					console.assert(!err, err);
 					// Convert it to CSS and append that to the document head
 					var $node = $("<style>").text(tree.toCSS()).appendTo(window.document.head);
-					console.log($node.text());
 					result.resolve($node);
 				});
 			})
