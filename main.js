@@ -32,6 +32,7 @@ define(function (require, exports, module) {
 	var AppInit         = brackets.getModule("utils/AppInit");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
+	var ExtensionUtils  = brackets.getModule("utils/ExtensionUtils");
 
 	var ENABLE_EVENTS      = true;
 	var ENABLE_TRACEPOINTS = false;
@@ -79,38 +80,6 @@ define(function (require, exports, module) {
 		return script.url;
 	}
 	
-	/** Find the URL to this extension's directory */
-	function _extensionDirUrl() {
-		var url = brackets.platform === "win" ? "file:///" : "file://localhost";
-		url += require.toUrl("./").replace(/\.\/$/, "");
-		
-		return url;
-	}
-
-	/** Loads a less file as CSS into the document */
-	function _loadLessFile(file, dir) {
-		var result = $.Deferred();
-
-		// Load the Less code
-		$.get(dir + file)
-			.done(function (code) {
-				// Parse it
-				var parser = new less.Parser({ filename: file, paths: [dir] });
-				parser.parse(code, function onParse(err, tree) {
-					console.assert(!err, err);
-					// Convert it to CSS and append that to the document head
-					var $node = $("<style>").text(tree.toCSS()).appendTo(window.document.head);
-					result.resolve($node);
-				});
-			})
-			.fail(function (request, error) {
-				result.reject(error);
-			})
-		;
-		
-		return result.promise();
-	}
-
     /** Sets a line class and removes it after a delay */
 	function setTemporaryLineClass(editor, line, className, delay) {
 		// get CodeMirror's line elements
@@ -209,7 +178,7 @@ define(function (require, exports, module) {
 		ld.enableAgent("edit");
 
 		// load styles
-		_loadLessFile("debugger.less", _extensionDirUrl()).done(function ($node) {
+		ExtensionUtils.loadStyleSheet(module, "debugger.less").done(function ($node) {
 			$style = $node;
 		});
 
