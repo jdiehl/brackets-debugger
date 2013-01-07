@@ -22,7 +22,7 @@
  */
 
 /*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $, less */
+/*global define, brackets, $ */
 
 define(function (require, exports, module) {
 	'use strict';
@@ -33,6 +33,7 @@ define(function (require, exports, module) {
 	var EditorManager   = brackets.getModule("editor/EditorManager");
 	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
 	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
+	var ExtensionUtils  = brackets.getModule("utils/ExtensionUtils");
 
 	var ENABLE_TRACEPOINTS = false;
 
@@ -66,36 +67,24 @@ define(function (require, exports, module) {
 		return script.url;
 	}
 	
-	/** Find the URL to this extension's directory */
-	function _extensionDirUrl() {
-		var url = brackets.platform === "win" ? "file:///" : "file://localhost";
-		url += require.toUrl("./").replace(/\.\/$/, "");
-		
-		return url;
-	}
+    /** Sets a line class and removes it after a delay */
+	function setTemporaryLineClass(editor, line, className, delay) {
+		// get CodeMirror's line elements
+		// this is much faster than working with the codemirror api
+		var $codeLines = $(".CodeMirror-lines > div > div:last > pre");
 
-	/** Loads a less file as CSS into the document */
-	function _loadLessFile(file, dir) {
-		var result = $.Deferred();
+		// add the class directly
+		var $line = $codeLines.eq(line);
+		$line.addClass(className);
 
-		// Load the Less code
-		$.get(dir + file)
-			.done(function (code) {
-				// Parse it
-				var parser = new less.Parser({ filename: file, paths: [dir] });
-				parser.parse(code, function onParse(err, tree) {
-					console.assert(!err, err);
-					// Convert it to CSS and append that to the document head
-					var $node = $("<style>").text(tree.toCSS()).appendTo(window.document.head);
-					result.resolve($node);
-				});
-			})
-			.fail(function (request, error) {
-				result.reject(error);
-			})
-		;
-		
-		return result.promise();
+		// Stop any previous attempts of removing the line class
+		window.clearTimeout(traceLineTimeouts[line]);
+
+		// Remove the line class after the given delay
+		traceLineTimeouts[line] = window.setTimeout(function () {
+			$line.attr("class", null);
+			delete traceLineTimeouts[line];
+		}, delay);
 	}
 
 	/** Event Handlers *******************************************************/
@@ -157,7 +146,7 @@ define(function (require, exports, module) {
 		LiveDevelopment.enableAgent("edit");
 
 		// load styles
-		_loadLessFile("debugger.less", _extensionDirUrl()).done(function ($node) {
+		ExtensionUtils.loadStyleSheet(module, "debugger.less").done(function ($node) {
 			$style = $node;
 		});
 
