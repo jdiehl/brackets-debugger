@@ -54,6 +54,10 @@ define(function (require, exports, module) {
 		$exports.triggerHandler("tabActivated", id);
 	}
 
+	function _onCloseClicked(event) {
+		toggle();
+	}
+
 	function addTab(id, title, $content) {
 		var $tab = $("<li>").text(title).attr("data-id", id);
 
@@ -89,7 +93,7 @@ define(function (require, exports, module) {
 		$toolbar = $('<div class="toolbar simple-toolbar-layout">').appendTo($panel);
 		$buttons = $('<div class="toolbar-buttons">').appendTo($toolbar);
 		$tabs = $('<ul class="toolbar-tabs">').appendTo($toolbar).on('click', 'li', _onTabClicked);
-		$('<a href="#" class="close">&times;</a>').appendTo($toolbar);
+		$('<a href="#" class="close">&times;</a>').appendTo($toolbar).on('click', _onCloseClicked);
 
 		// attach the panel to the main view's content
 		$(".main-view .content").append($panel);
