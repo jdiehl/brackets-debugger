@@ -189,8 +189,17 @@ define(function (require, exports, module) {
 		Inspector.Console.enable();
 	}
 
+    function _addMenuEntry() {
+        var commandId = "i10.debugger.toggleConsole";
+        CommandManager.register("Toggle Console", commandId, Panel.toggle);
+        var menu = Menus.getMenu(Menus.AppMenuBar.NAVIGATE_MENU);
+        menu.addMenuItem.apply(menu, [commandId, null]);
+    }
+    
 	// init
 	function init() {
+		_addMenuEntry();
+
 		// Output context menu with entry "Clear Console"
 		CommandManager.register(outputClearCommandName, outputClearCommandId, Inspector.Console.clearMessages);
         outputContextMenu = Menus.registerContextMenu(outputContextMenuId);
