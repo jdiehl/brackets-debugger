@@ -80,5 +80,5 @@
   "mocha"         : true,     // Mocha
 
   // Custom Globals
-  "predef"       : [ "define", "brackets" ]
+  "predef"       : [ "define", "brackets", "Mustache" ]
 }
