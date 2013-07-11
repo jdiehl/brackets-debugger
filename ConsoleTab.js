@@ -201,7 +201,7 @@ define(function (require, exports, module) {
 		_addMenuEntry();
 
 		// Output context menu with entry "Clear Console"
-		CommandManager.register(outputClearCommandName, outputClearCommandId, Inspector.Console.clearMessages);
+		CommandManager.register(outputClearCommandName, outputClearCommandId, function () { Inspector.Console.clearMessages(); });
         outputContextMenu = Menus.registerContextMenu(outputContextMenuId);
         outputContextMenu.addMenuItem(outputClearCommandId);
 

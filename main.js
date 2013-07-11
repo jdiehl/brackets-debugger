@@ -180,7 +180,6 @@ define(function (require, exports, module) {
 		$("body").off("click", ".CodeMirror-gutter pre", onLineNumberClick);
 	}
 
-	exports.init = init;
 	exports.unload = unload;
 	exports.ENABLE_TRACEPOINTS = ENABLE_TRACEPOINTS;
 
