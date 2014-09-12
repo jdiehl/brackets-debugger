@@ -24,11 +24,12 @@
 define(function (require, exports) {
 	'use strict';
 
-	var Inspector = brackets.getModule('LiveDevelopment/Inspector/Inspector');
-	// For resizing
-	var EditorManager = brackets.getModule('editor/EditorManager');
+	var Inspector		= brackets.getModule('LiveDevelopment/Inspector/Inspector'),
+		PanelManager	= brackets.getModule('view/PanelManager');
 
-	var $panel, $toolbar, $tabs, $buttons;
+	var PANEL_TEMPLATE = require('text!htmlContent/bottom-panel.html');
+
+	var panel, $panel, $tabs, $buttons;
 
 	var $exports = $(exports);
 
@@ -84,16 +85,20 @@ define(function (require, exports) {
 	// init
 	function init() {
 		// create the bottom panel
-		$panel = $('<div id="jdiehl-debugger-panel" class="bottom-panel">');
-		
-		// configure the toolbar
-		$toolbar = $('<div class="toolbar simple-toolbar-layout">').appendTo($panel);
-		$buttons = $('<div class="toolbar-buttons">').appendTo($toolbar);
-		$tabs = $('<ul class="toolbar-tabs">').appendTo($toolbar).on('click', 'li', _onTabClicked);
-		$('<a href="#"" class="close">&times;</a>').appendTo($toolbar).on('click', _onCloseClicked);
+		$panel = $(Mustache.render(PANEL_TEMPLATE));
 
-		// attach the panel to the main view's content
-		$('.main-view .content').append($panel);
+		panel = PanelManager.createBottomPanel('jdiehl-debugger-panel', $panel, 100);
+		$panel.find('.toolbar-tabs').on('click', 'li', _onTabClicked);
+		$panel.find('.close').on('click', _onCloseClicked);
+
+		$tabs = $panel.find('.toolbar-tabs');
+		$buttons = $panel.find('toolbar-buttons');
+
+		// configure the toolbar
+		// $toolbar = $('').appendTo($panel);
+		// $buttons = $('').appendTo($toolbar);
+		// $tabs = $('').appendTo($toolbar).on('click', 'li', _onTabClicked);
+		// $('').appendTo($toolbar).on('click', _onCloseClicked);
 
 		$(Inspector).on('connect.debugger', _onConnect);
 		$(Inspector).on('disconnect.debugger', _onDisconnect);
@@ -105,16 +110,12 @@ define(function (require, exports) {
 
 	function unload() {
 		$(Inspector).off('.debugger');
-		$panel.remove();
-		EditorManager.resizeEditor();
-
 		$exports.off();
 	}
 
 	// toggle the display of the panel
 	function toggle(show) {
-		$panel.toggle(show);
-		EditorManager.resizeEditor();
+		panel.setVisible(show);
 		$exports.triggerHandler(show ? 'show' : 'hide');
 	}
 

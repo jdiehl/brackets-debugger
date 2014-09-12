@@ -63,15 +63,14 @@ define(function (require, exports, module) {
 		if (! script) { return undefined; }
 		return script.url;
 	}
-	
+
 	/** Event Handlers *******************************************************/
-	
-	function onLineNumberClick(event) {
+
+	function onGutterClick(cm, line) {
 		// Todo: find the editor that was actually clicked
-		var editor = EditorManager.getCurrentFullEditor();
-		var pos    = editor._codeMirror.coordsChar({ x: event.clientX, y: event.clientY });
-		
-		var location = { url: editor.document.url, lineNumber: pos.line };
+		var editor = EditorManager.getCurrentFullEditor(),
+			location = { url: editor.document.url, lineNumber: line };
+
 		Debugger.toggleBreakpoint(location);
 	}
 
@@ -107,11 +106,22 @@ define(function (require, exports, module) {
 		}
 	}
 
+	function onActiveEditorChange(event, current, previous) {
+		if (previous) {
+			previous._codeMirror.off('gutterClick', onGutterClick);
+		}
+
+		if (current) {
+			current._codeMirror.on('gutterClick', onGutterClick);
+		}
+	}
+
 	/** Init Functions *******************************************************/
 	
 	// init
 	function init() {
 		// enable experimental agents
+		LiveDevelopment.enableAgent('dom');
 		LiveDevelopment.enableAgent('script');
 		LiveDevelopment.enableAgent('highlight');
 		LiveDevelopment.enableAgent('goto');
@@ -135,11 +145,9 @@ define(function (require, exports, module) {
 		$Debugger.on('paused', onPaused);
 		$Debugger.on('resumed', onResumed);
 
-		// register for code mirror click events
-		// Todo: use CodeMirror's onGutterClick
-		// Then we would know which editor was clicked (inline or full)
-		// Right now this would be buggy, though: https://github.com/adobe/brackets/issues/1251
-		$('body').on('click', '.CodeMirror-gutter pre', onLineNumberClick);
+		// register for code mirror onGutterClick events
+		$(EditorManager).on('activeEditorChange.debugger', onActiveEditorChange);
+		onActiveEditorChange(null, EditorManager.getCurrentFullEditor());
 	}
 
 	// unload
@@ -149,7 +157,7 @@ define(function (require, exports, module) {
 		Breakpoint.unload();
 		Debugger.unload();
 		$style.remove();
-		$('body').off('click', '.CodeMirror-gutter pre', onLineNumberClick);
+		$(EditorManager).off('.debugger');
 	}
 
 	exports.unload = unload;

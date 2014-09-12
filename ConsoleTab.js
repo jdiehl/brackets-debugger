@@ -25,7 +25,7 @@
 define(function (require, exports) {
 	'use strict';
 
-	var Inspector      = brackets.getModule('LiveDevelopment/Inspector/Inspector'),
+	var Inspector    = brackets.getModule('LiveDevelopment/Inspector/Inspector'),
 	  CommandManager = brackets.getModule('command/CommandManager'),
 	  Menus          = brackets.getModule('command/Menus'),
 
@@ -140,8 +140,10 @@ define(function (require, exports) {
 
 	function _onToolbarButtonPressed(event) {
 		event.preventDefault();
-		var method = this.getAttribute('class').replace(/\s*/, '');
-		if (method === 'pause') { this.disabled = true; }
+		var method = event.target.getAttribute('class').replace(/\s*/, '');
+		if (method === 'pause') {
+			event.target.disabled = true;
+		}
 		Debugger[method]();
 	}
 
@@ -197,10 +199,13 @@ define(function (require, exports) {
 	function init() {
 		_addMenuEntry();
 
-		// Output context menu with entry 'Clear Console'
-		CommandManager.register(outputClearCommandName, outputClearCommandId, function () { Inspector.Console.clearMessages(); });
-        outputContextMenu = Menus.registerContextMenu(outputContextMenuId);
-        outputContextMenu.addMenuItem(outputClearCommandId);
+		// Output context menu with entry "Clear Console"
+		CommandManager.register(outputClearCommandName, outputClearCommandId, function () {
+      Inspector.Console.clearMessages();
+    });
+        
+    outputContextMenu = Menus.registerContextMenu(outputContextMenuId);
+    outputContextMenu.addMenuItem(outputClearCommandId);
 
 		// configure the tab content
 		$tab    = $('<div class="table-container">').attr('id', tabId);

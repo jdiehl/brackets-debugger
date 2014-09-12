@@ -36,7 +36,7 @@ define(function (require, exports) {
 		for (var i in _breakpoints) {
 			if (_breakpoints.hasOwnProperty(i)) {
 				callback(_breakpoints[i], i);
-			});
+			}
 		}
 	}
 
@@ -133,11 +133,12 @@ define(function (require, exports) {
 
 	// Inspector connected
 	function _onConnect() {
-		Inspector.Debugger.enable();
-		_eachBreakpoint(function (b) {
-			if (b.active) {
-				b.set();
-			}
+		Inspector.Debugger.enable().done(function () {
+			_eachBreakpoint(function (b) {
+				if (b.active) {
+					b.set();
+				}
+			});
 		});
 	}
 
