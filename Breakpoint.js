@@ -21,19 +21,24 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $ */
-
-define(function (require, exports, module) {
+define(function (require, exports) {
 	'use strict';
 
-	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var Inspector = brackets.getModule('LiveDevelopment/Inspector/Inspector');
 
 	var _breakpoints = {};
 
 	var nextNumber = 1;
 
 	var $exports = $(exports);
+
+	function _eachBreakpoint(callback) {
+		for (var i in _breakpoints) {
+			if (_breakpoints.hasOwnProperty(i)) {
+				callback(_breakpoints[i], i);
+			});
+		}
+	}
 
 	// Breakpoints Class
 	function Breakpoint(location, condition) {
@@ -53,11 +58,13 @@ define(function (require, exports, module) {
 			
 			var self = this;
 			var l = this.location;
-			Inspector.Debugger.setBreakpointByUrl(l.lineNumber, l.url, l.urlRegex, l.columnNumber, this.condition, function (res) {
+			Inspector.Debugger.setBreakpointByUrl(l.lineNumber, l.url, l.urlRegex, l.columnNumber, this.condition,
+				function (res) {
+
 				// res = {breakpointId, locations}
 				self.id = res.breakpointId;
 				self.resolvedLocations = [];
-				$(self).triggerHandler("set", [self]);
+				$(self).triggerHandler('set', [self]);
 				self._addResolvedLocations(res.locations);
 			});
 		},
@@ -68,9 +75,9 @@ define(function (require, exports, module) {
 			this.active = false;
 			
 			var self = this;
-			Inspector.Debugger.removeBreakpoint(this.id, function (res) {
+			Inspector.Debugger.removeBreakpoint(this.id, function () {
 				// res = {}
-				$(self).triggerHandler("remove", [self]);
+				$(self).triggerHandler('remove', [self]);
 				delete self.id;
 				delete self.resolvedLocations;
 			});
@@ -95,27 +102,23 @@ define(function (require, exports, module) {
 		},
 
 		// matches the breakpoint's resolved locations
-		matchesResolved: function (location) {
-			for (var i in this.resolvedLocations) {
-				var l = this.resolvedLocations[i];
-				if (l.scriptId === location.scriptId &&
+		matchesResolved: function () {
+			return !!this.resolvedLocations.find(function (l) {
+				return (l.scriptId === location.scriptId &&
 					l.lineNumber === location.lineNumber &&
-					l.columnNumber === location.columnNumber) {
-					return true;
-				}
-			}
-			return false;
+					l.columnNumber === location.columnNumber);
+			});
 		},
 
 		// add a resolved location
 		_addResolvedLocations: function (locations) {
-			var $this = $(this), i, location;
-			for (i in locations) {
-				location = locations[i];
-				if (this.matchesResolved(location)) continue;
-				this.resolvedLocations.push(location);
-				$this.triggerHandler("resolve", [this, location]);
-			}
+			var $this = $(this);
+			locations.forEach(function (location) {
+				if (!this.matchesResolved(location)) {
+					this.resolvedLocations.push(location);
+					$this.triggerHandler('resolve', [this, location]);
+				}
+			});
 		}
 	};
 
@@ -131,57 +134,55 @@ define(function (require, exports, module) {
 	// Inspector connected
 	function _onConnect() {
 		Inspector.Debugger.enable();
-		for (var i in _breakpoints) {
-			var b = _breakpoints[i];
+		_eachBreakpoint(function (b) {
 			if (b.active) {
 				b.set();
 			}
-		}
+		});
 	}
 
 	// Init
 	function init() {
-		$(Inspector).on("connect.debugger", _onConnect);
-		$(Inspector.Debugger).on("breakpointResolved.debugger", _onBreakpointResolved);
-		if (Inspector.connected()) _onConnect();
+		$(Inspector).on('connect.debugger', _onConnect);
+		$(Inspector.Debugger).on('breakpointResolved.debugger', _onBreakpointResolved);
+		if (Inspector.connected()) {
+			_onConnect();
+		}
 	}
 
 	// Unload
 	function unload() {
-		$(Inspector).off(".debugger");
-		$(Inspector.Debugger).off(".debugger");
+		$(Inspector).off('.debugger');
+		$(Inspector.Debugger).off('.debugger');
 		$exports.off();
 	}
 
 	// Find resolved breakpoints
 	function findResolved(location) {
 		var result = [];
-		for (var i in _breakpoints) {
-			var b = _breakpoints[i];
+		_eachBreakpoint(function (b) {
 			if (b.matchesResolved(location)) {
 				result.push(b);
 			}
-		}
+		});
 		return result;
 	}
 
 	// Find breakpoints
 	function find(location, condition) {
-		for (var i in _breakpoints) {
-			var b = _breakpoints[i];
+		_eachBreakpoint(function (b) {
 			if (b.matches(location, condition)) {
 				return b;
 			}
-		}
+		});
 	}
 
 	function findById(id) {
-		for (var i in _breakpoints) {
-			var b = _breakpoints[i];
+		_eachBreakpoint(function (b) {
 			if (b.id === id) {
 				return b;
 			}
-		}
+		});
 	}
 
 	exports.init = init;

@@ -21,16 +21,13 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $ */
-
-define(function (require, exports, module) {
+define(function (require, exports) {
 	'use strict';
 
-	var Inspector	= brackets.getModule("LiveDevelopment/Inspector/Inspector"),
-		ScriptAgent	= brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
+	var Inspector	= brackets.getModule('LiveDevelopment/Inspector/Inspector'),
+		ScriptAgent	= brackets.getModule('LiveDevelopment/Agents/ScriptAgent');
 
-	var Breakpoint = require("Breakpoint");
+	var Breakpoint = require('Breakpoint');
 	
 	var $exports = $(exports);
 	var _paused;
@@ -69,8 +66,8 @@ define(function (require, exports, module) {
 		if (!breakpoint) {
 			breakpoint = new Breakpoint.Breakpoint(location);
 			$(breakpoint)
-				.on("resolve", _onResolveBreakpoint)
-				.on("remove", _onRemoveBreakpoint);
+				.on('resolve', _onResolveBreakpoint)
+				.on('remove', _onRemoveBreakpoint);
 		}
 		breakpoint.toggle();
 		return breakpoint;
@@ -92,22 +89,24 @@ define(function (require, exports, module) {
 		// res = {callFrames, reason, data}
 
 		// ignore DOM breakpoints - they are handled by the ScriptAgent
-		if (res.reason === "DOM") return;
+		if (res.reason === 'DOM') {
+			return;
+		}
 
 		// gather some info about this pause
 		_paused = { location: res.callFrames[0].location, callFrames: res.callFrames };
 
-		// trigger the "paused" event
-		$exports.triggerHandler("paused", _paused);
+		// trigger the 'paused' event
+		$exports.triggerHandler('paused', _paused);
 	}
 
 	// WebInspector Event: Debugger.resumed
-	function _onResumed(event, res) {
+	function _onResumed() {
 		// res = {}
 
-		// send the "resumed" event with the info from the pause
+		// send the 'resumed' event with the info from the pause
 		if (_paused) {
-			$exports.triggerHandler("resumed", _paused);
+			$exports.triggerHandler('resumed', _paused);
 			_paused = undefined;
 		}
 	}
@@ -120,35 +119,34 @@ define(function (require, exports, module) {
 
 	// Breakpoint Event: breakpoint removed
 	function _onRemoveBreakpoint(event, breakpoint) {
-		var locations = breakpoint.resolvedLocations;
-		for (var i in locations) {
-			locations[i].url = ScriptAgent.scriptWithId(locations[i].scriptId).url;
-			$exports.triggerHandler('removeBreakpoint', locations[i]);
-		}
+		breakpoint.resolvedLocations.forEach(function (location) {
+			location.url = ScriptAgent.scriptWithId(location.scriptId).url;
+			$exports.triggerHandler('removeBreakpoint', location);
+		});
 	}
 
 	// Inspector Event: we are connected to a live session
-	function _onConnect(event) {
+	function _onConnect() {
 		Inspector.Debugger.enable();
 	}
 
 	// Inspector Event: we are disconnected
-	function _onDisconnect(event) {
+	function _onDisconnect() {
 	}
 
 	/** Init Functions *******************************************************/
 	
 	// init
 	function init() {
-		$(Inspector).on("connect.debugger", _onConnect);
-		$(Inspector).on("disconnect.debugger", _onDisconnect);
-		$(Inspector.Debugger).on("paused.debugger", _onPaused);
-		$(Inspector.Debugger).on("resumed.debugger", _onResumed);
+		$(Inspector).on('connect.debugger', _onConnect);
+		$(Inspector).on('disconnect.debugger', _onDisconnect);
+		$(Inspector.Debugger).on('paused.debugger', _onPaused);
+		$(Inspector.Debugger).on('resumed.debugger', _onResumed);
 	}
 
 	function unload() {
-		$(Inspector).off(".debugger");
-		$(Inspector.Debugger).off(".debugger");
+		$(Inspector).off('.debugger');
+		$(Inspector.Debugger).off('.debugger');
 		$exports.off();
 		_onDisconnect();
 	}

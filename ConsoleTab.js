@@ -21,56 +21,54 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $ */
-
-define(function (require, exports, module) {
+/*jshint maxlen: 200 */
+define(function (require, exports) {
 	'use strict';
 
-	var Inspector      = brackets.getModule("LiveDevelopment/Inspector/Inspector");
-	var EditorManager  = brackets.getModule("editor/EditorManager");
-	var CommandManager = brackets.getModule("command/CommandManager");
-	var Menus          = brackets.getModule("command/Menus");
+	var Inspector      = brackets.getModule('LiveDevelopment/Inspector/Inspector'),
+	  CommandManager = brackets.getModule('command/CommandManager'),
+	  Menus          = brackets.getModule('command/Menus'),
 
-	var Debugger = require("Debugger");
-	var Panel    = require("Panel");
-	var Main     = require("main");
+	  Debugger = require('Debugger'),
+	  Panel    = require('Panel'),
+	  Main     = require('main'),
 
-	var tabId                  = "jdiehl-debugger-console";
-	var outputContextMenuId    = "jdiehl-debugger-console-output";
-	var outputClearCommandName = "Clear Console";
-	var outputClearCommandId   = "jdiehl.debugger.console.clear";
+	  tabId                  = 'jdiehl-debugger-console',
+	  outputContextMenuId    = 'jdiehl-debugger-console-output',
+	  outputClearCommandName = 'Clear Console',
+	  outputClearCommandId   = 'jdiehl.debugger.console.clear',
 
-	var $tab, $output, $prompt;
-	var $btnPause, $btnContinue, $btnStepOver, $btnStepInto, $btnStepOut;
-	var _lastMessage;
-	var outputContextMenu;
+	  $tab, $output, $prompt,
+	  $btnPause, $btnContinue, $btnStepOver, $btnStepInto, $btnStepOut,
+	  _lastMessage, outputContextMenu;
 
 	// add a message
 	function _add(level, message, wasThrown) {
-		var $msg = $("<div>");
+		var $msg = $('<div>');
 		$msg.addClass(level);
-		if (wasThrown) $msg.addClass("error");
+		if (wasThrown) {
+			$msg.addClass('error');
+		}
 
 		switch (level) {
 
 		// command
-		case "out":
+		case 'out':
 			$msg.text(message);
 			break;
 
 		// response
-		case "in":
+		case 'in':
 			if (message.text) {
 				$msg.text(message.text);
 			} else if (message.description) {
 				$msg.text(message.description);
 			} else {
-				if (message.type === "undefined" || message.type === "null") {
+				if (message.type === 'undefined' || message.type === 'null') {
 					$msg.text(message.type);
-					$msg.addClass("null");
+					$msg.addClass('null');
 				} else {
-					$msg.text("[" + message.type + "]");
+					$msg.text('[' + message.type + ']');
 				}
 			}
 			break;
@@ -93,11 +91,11 @@ define(function (require, exports, module) {
 		case 13: // return
 			_curHistory = undefined;
 			var command = $prompt.val();
-			$prompt.val("");
-			_add("out", command);
+			$prompt.val('');
+			_add('out', command);
 			_history.push(command);
 			Debugger.evaluate(command, function (res) {
-				_add("in", res.result, res.wasThrown);
+				_add('in', res.result, res.wasThrown);
 			});
 			break;
 
@@ -129,22 +127,21 @@ define(function (require, exports, module) {
 	}
 
 	function _updateButtonsForPauseState(paused) {
-		$btnPause.attr("disabled", paused);
-		$btnContinue.attr("disabled", !paused);
-		$btnStepOver.attr("disabled", !paused);
-		$btnStepInto.attr("disabled", !paused);
-		$btnStepOut.attr("disabled", !paused);
+		$btnPause.attr('disabled', paused);
+		$btnContinue.attr('disabled', !paused);
+		$btnStepOver.attr('disabled', !paused);
+		$btnStepInto.attr('disabled', !paused);
+		$btnStepOut.attr('disabled', !paused);
 	}
 
 	function _onOutputContextMenu(event) {
-		var menu = Menus.getContextMenu("editor-context-menu");
 		outputContextMenu.open(event);
 	}
 
 	function _onToolbarButtonPressed(event) {
 		event.preventDefault();
-		var method = this.getAttribute("class").replace(/\s*/, '');
-		if (method === "pause") { this.disabled = true; }
+		var method = this.getAttribute('class').replace(/\s*/, '');
+		if (method === 'pause') { this.disabled = true; }
 		Debugger[method]();
 	}
 
@@ -156,7 +153,7 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Console.messageRepeatCountUpdated
-	function _onMessageRepeatCountUpdated(event, res) {
+	function _onMessageRepeatCountUpdated() {
 		// res = {count}
 		if (_lastMessage) {
 			_add(_lastMessage.level, _lastMessage);
@@ -164,7 +161,7 @@ define(function (require, exports, module) {
 	}
 
 	// WebInspector Event: Console.messagesCleared
-	function _onMessagesCleared(event, res) {
+	function _onMessagesCleared() {
 		// res = {}
 		_lastMessage = null;
 		$output.empty();
@@ -180,68 +177,70 @@ define(function (require, exports, module) {
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onReload(event) {
+	function _onReload() {
 		// assume we're not paused
 		_updateButtonsForPauseState(false);
 	}
 
-	function _onConnect(event) {
+	function _onConnect() {
 		Inspector.Console.enable();
 	}
 
     function _addMenuEntry() {
-        var commandId = "i10.debugger.toggleConsole";
-        CommandManager.register("Toggle Console", commandId, Panel.toggle);
+        var commandId = 'i10.debugger.toggleConsole';
+        CommandManager.register('Toggle Console', commandId, Panel.toggle);
         var menu = Menus.getMenu(Menus.AppMenuBar.NAVIGATE_MENU);
         menu.addMenuItem.apply(menu, [commandId, null]);
     }
-    
+
 	// init
 	function init() {
 		_addMenuEntry();
 
-		// Output context menu with entry "Clear Console"
+		// Output context menu with entry 'Clear Console'
 		CommandManager.register(outputClearCommandName, outputClearCommandId, function () { Inspector.Console.clearMessages(); });
         outputContextMenu = Menus.registerContextMenu(outputContextMenuId);
         outputContextMenu.addMenuItem(outputClearCommandId);
 
 		// configure the tab content
 		$tab    = $('<div class="table-container">').attr('id', tabId);
-		$output = $('<div class="output">').on("contextmenu", _onOutputContextMenu).appendTo($tab);
-		$prompt = $('<input class="prompt">').on("keyup", _onPromptKeypress).appendTo($tab);
-		Panel.addTab(tabId, "Console", $tab);
+		$output = $('<div class="output">').on('contextmenu', _onOutputContextMenu).appendTo($tab);
+		$prompt = $('<input class="prompt">').on('keyup', _onPromptKeypress).appendTo($tab);
+		Panel.addTab(tabId, 'Console', $tab);
 		
 		// configure the toolbar
-		$btnPause    = Panel.addButton($('<button class="pause" title="Pause">').on("mousedown", _onToolbarButtonPressed));
-		$btnContinue = Panel.addButton($('<button class="resume" title="Resume">').on("mousedown", _onToolbarButtonPressed));
-		$btnStepOver = Panel.addButton($('<button class="stepOver" title="Step Over">').on("mousedown", _onToolbarButtonPressed));
-		$btnStepInto = Panel.addButton($('<button class="stepInto" title="Step Into">').on("mousedown", _onToolbarButtonPressed));
-		$btnStepOut  = Panel.addButton($('<button class="stepOut" title="Step Out">').on("mousedown", _onToolbarButtonPressed));
+		$btnPause    = Panel.addButton($('<button class="pause" title="Pause">').on('mousedown', _onToolbarButtonPressed));
+		$btnContinue = Panel.addButton($('<button class="resume" title="Resume">').on('mousedown', _onToolbarButtonPressed));
+		$btnStepOver = Panel.addButton($('<button class="stepOver" title="Step Over">').on('mousedown', _onToolbarButtonPressed));
+		$btnStepInto = Panel.addButton($('<button class="stepInto" title="Step Into">').on('mousedown', _onToolbarButtonPressed));
+		$btnStepOut  = Panel.addButton($('<button class="stepOut" title="Step Out">').on('mousedown', _onToolbarButtonPressed));
 		_updateButtonsForPauseState(false);
 
 		// register for debugger events
 		var $Debugger = $(Debugger);
-		$Debugger.on("paused", _onPaused);
-		$Debugger.on("resumed", _onResumed);
-		$Debugger.on("reload", _onReload);
+		$Debugger.on('paused', _onPaused);
+		$Debugger.on('resumed', _onResumed);
+		$Debugger.on('reload', _onReload);
 		
 		// configure the inspector
-		$(Inspector.Console).on("messageAdded.debugger", _onMessageAdded);
-		$(Inspector.Console).on("messageRepeatCountUpdated.debugger", _onMessageRepeatCountUpdated);
-		$(Inspector.Console).on("messagesCleared.debugger", _onMessagesCleared);
-		$(Inspector).on("connect.debugger", _onConnect);
-		if (Inspector.connected()) _onConnect();
+		$(Inspector.Console).on('messageAdded.debugger', _onMessageAdded);
+		$(Inspector.Console).on('messageRepeatCountUpdated.debugger', _onMessageRepeatCountUpdated);
+		$(Inspector.Console).on('messagesCleared.debugger', _onMessagesCleared);
+		$(Inspector).on('connect.debugger', _onConnect);
+		if (Inspector.connected()) {
+			_onConnect();
+		}
 	}
 
 	function unload() {
 		// unregister debugger events
 		var $Debugger = $(Debugger);
-		$Debugger.off("paused", _onPaused);
-		$Debugger.off("resumed", _onResumed);
-		$Debugger.off("reload", _onReload);
+		$Debugger.off('paused', _onPaused);
+		$Debugger.off('resumed', _onResumed);
+		$Debugger.off('reload', _onReload);
 		
-		$(Inspector).off(".debugger");
-		$(Inspector.Console).off(".debugger");
+		$(Inspector).off('.debugger');
+		$(Inspector.Console).off('.debugger');
 	}
 
 	// public methods

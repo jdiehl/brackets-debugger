@@ -21,45 +21,42 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $ */
-
-define(function (require, exports, module) {
+define(function (require, exports) {
 	'use strict';
 
-	var Inspector = brackets.getModule("LiveDevelopment/Inspector/Inspector");
+	var Inspector = brackets.getModule('LiveDevelopment/Inspector/Inspector');
 	// For resizing
-	var EditorManager = brackets.getModule("editor/EditorManager");
+	var EditorManager = brackets.getModule('editor/EditorManager');
 
 	var $panel, $toolbar, $tabs, $buttons;
 
 	var $exports = $(exports);
 
 	function _onTabClicked(event) {
-		var $tab       = $(event.target).closest("li");
-		var $activeTab = $tab.siblings().andSelf().filter(".active");
+		var $tab       = $(event.target).closest('li');
+		var $activeTab = $tab.siblings().andSelf().filter('.active');
 
-		var id       = $tab.data("id");
-		var activeId = $activeTab.data("id");
+		var id       = $tab.data('id');
+		var activeId = $activeTab.data('id');
 
 		if (id === activeId) { return; }
 
-		var $content       = $("#" + id);
-		var $activeContent = $("#" + activeId);
+		var $content       = $('#' + id);
+		var $activeContent = $('#' + activeId);
 
-		$activeTab.add($activeContent).removeClass("active");
-		$tab.add($content).addClass("active");
+		$activeTab.add($activeContent).removeClass('active');
+		$tab.add($content).addClass('active');
 
-		if (activeId) { $exports.triggerHandler("tabDeactivated", activeId); }
-		$exports.triggerHandler("tabActivated", id);
+		if (activeId) { $exports.triggerHandler('tabDeactivated', activeId); }
+		$exports.triggerHandler('tabActivated', id);
 	}
 
-	function _onCloseClicked(event) {
+	function _onCloseClicked() {
 		toggle();
 	}
 
 	function addTab(id, title, $content) {
-		var $tab = $("<li>").text(title).attr("data-id", id);
+		var $tab = $('<li>').text(title).attr('data-id', id);
 
 		$tabs.append($tab);
 		$panel.append($content);
@@ -76,11 +73,11 @@ define(function (require, exports, module) {
 		return $button;
 	}
 	
-	function _onConnect(event) {
+	function _onConnect() {
 		toggle(true);
 	}
 
-	function _onDisconnect(event) {
+	function _onDisconnect() {
 		toggle(false);
 	}
 
@@ -93,19 +90,21 @@ define(function (require, exports, module) {
 		$toolbar = $('<div class="toolbar simple-toolbar-layout">').appendTo($panel);
 		$buttons = $('<div class="toolbar-buttons">').appendTo($toolbar);
 		$tabs = $('<ul class="toolbar-tabs">').appendTo($toolbar).on('click', 'li', _onTabClicked);
-		$('<a href="#" class="close">&times;</a>').appendTo($toolbar).on('click', _onCloseClicked);
+		$('<a href="#"" class="close">&times;</a>').appendTo($toolbar).on('click', _onCloseClicked);
 
 		// attach the panel to the main view's content
-		$(".main-view .content").append($panel);
+		$('.main-view .content').append($panel);
 
-		$(Inspector).on("connect.debugger", _onConnect);
-		$(Inspector).on("disconnect.debugger", _onDisconnect);
+		$(Inspector).on('connect.debugger', _onConnect);
+		$(Inspector).on('disconnect.debugger', _onDisconnect);
 
-		if (Inspector.connected()) _onConnect();
+		if (Inspector.connected()) {
+			_onConnect();
+		}
 	}
 
 	function unload() {
-		$(Inspector).off(".debugger");
+		$(Inspector).off('.debugger');
 		$panel.remove();
 		EditorManager.resizeEditor();
 
@@ -116,7 +115,7 @@ define(function (require, exports, module) {
 	function toggle(show) {
 		$panel.toggle(show);
 		EditorManager.resizeEditor();
-		$exports.triggerHandler(show ? "show" : "hide");
+		$exports.triggerHandler(show ? 'show' : 'hide');
 	}
 
 	// public methods

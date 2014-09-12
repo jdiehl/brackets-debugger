@@ -21,27 +21,24 @@
  *
  */
 
-/*jslint vars: true, plusplus: true, devel: true, browser: true, nomen: true, regexp: true, indent: 4, maxerr: 50 */
-/*global define, brackets, $ */
-
 define(function (require, exports, module) {
 	'use strict';
 
-	var AppInit         = brackets.getModule("utils/AppInit");
-	var LiveDevelopment = brackets.getModule("LiveDevelopment/LiveDevelopment");
-	var DocumentManager = brackets.getModule("document/DocumentManager");
-	var EditorManager   = brackets.getModule("editor/EditorManager");
-	var ScriptAgent     = brackets.getModule("LiveDevelopment/Agents/ScriptAgent");
-	var GotoAgent       = brackets.getModule("LiveDevelopment/Agents/GotoAgent");
-	var ExtensionUtils  = brackets.getModule("utils/ExtensionUtils");
+	var AppInit         = brackets.getModule('utils/AppInit');
+	var LiveDevelopment = brackets.getModule('LiveDevelopment/LiveDevelopment');
+	var DocumentManager = brackets.getModule('document/DocumentManager');
+	var EditorManager   = brackets.getModule('editor/EditorManager');
+	var ScriptAgent     = brackets.getModule('LiveDevelopment/Agents/ScriptAgent');
+	var GotoAgent       = brackets.getModule('LiveDevelopment/Agents/GotoAgent');
+	var ExtensionUtils  = brackets.getModule('utils/ExtensionUtils');
 
 	var ENABLE_TRACEPOINTS = false;
 
-	// var Context    = require("Context");
-	var Debugger   = require("Debugger");
-	var Panel      = require("Panel");
-	var ConsoleTab = require("ConsoleTab");
-	var Breakpoint = require("Breakpoint");
+	// var Context    = require('Context');
+	var Debugger   = require('Debugger');
+	var Panel      = require('Panel');
+	var ConsoleTab = require('ConsoleTab');
+	var Breakpoint = require('Breakpoint');
 
 	var $style;
 
@@ -67,26 +64,6 @@ define(function (require, exports, module) {
 		return script.url;
 	}
 	
-    /** Sets a line class and removes it after a delay */
-	function setTemporaryLineClass(editor, line, className, delay) {
-		// get CodeMirror's line elements
-		// this is much faster than working with the codemirror api
-		var $codeLines = $(".CodeMirror-lines > div > div:last > pre");
-
-		// add the class directly
-		var $line = $codeLines.eq(line);
-		$line.addClass(className);
-
-		// Stop any previous attempts of removing the line class
-		window.clearTimeout(traceLineTimeouts[line]);
-
-		// Remove the line class after the given delay
-		traceLineTimeouts[line] = window.setTimeout(function () {
-			$line.attr("class", null);
-			delete traceLineTimeouts[line];
-		}, delay);
-	}
-
 	/** Event Handlers *******************************************************/
 	
 	function onLineNumberClick(event) {
@@ -100,14 +77,16 @@ define(function (require, exports, module) {
 
 	function onSetBreakpoint(event, location) {
 		var editor = _editorForLocation(location);
-		if (! editor) return;
-		editor._codeMirror.setMarker(location.lineNumber, null, "breakpoint");
+		if (editor) {
+			editor._codeMirror.setMarker(location.lineNumber, null, 'breakpoint');
+		}
 	}
 
 	function onRemoveBreakpoint(event, location) {
 		var editor = _editorForLocation(location);
-		if (! editor) return;
-		editor._codeMirror.clearMarker(location.lineNumber, null, "breakpoint");
+		if (editor) {
+			editor._codeMirror.clearMarker(location.lineNumber, null, 'breakpoint');
+		}
 	}
 
 	function onPaused(event, res) {
@@ -116,7 +95,7 @@ define(function (require, exports, module) {
 		var trip = GotoAgent.open(url, { line: res.location.lineNumber, ch: res.location.columnNumber }, true);
 		if (! trip) { return; }
 		trip.done(function () {
-			EditorManager.getCurrentFullEditor()._codeMirror.setLineClass(res.location.lineNumber, "paused");
+			EditorManager.getCurrentFullEditor()._codeMirror.setLineClass(res.location.lineNumber, 'paused');
 		});
 	}
 
@@ -128,25 +107,18 @@ define(function (require, exports, module) {
 		}
 	}
 
-	function onToggleBreakEvents(event) {
-		var flag = !Debugger.breakOnTracepoints();
-		Debugger.setBreakOnTracepoints(flag);
-		$btnBreakEvents.toggleClass("enabled", flag);
-	}
-
 	/** Init Functions *******************************************************/
 	
 	// init
-	var $btnBreakEvents;
 	function init() {
 		// enable experimental agents
-		LiveDevelopment.enableAgent("script");
-		LiveDevelopment.enableAgent("highlight");
-		LiveDevelopment.enableAgent("goto");
-		LiveDevelopment.enableAgent("edit");
+		LiveDevelopment.enableAgent('script');
+		LiveDevelopment.enableAgent('highlight');
+		LiveDevelopment.enableAgent('goto');
+		LiveDevelopment.enableAgent('edit');
 
 		// load styles
-		ExtensionUtils.loadStyleSheet(module, "debugger.less").done(function ($node) {
+		ExtensionUtils.loadStyleSheet(module, 'debugger.less').done(function ($node) {
 			$style = $node;
 		});
 
@@ -158,16 +130,16 @@ define(function (require, exports, module) {
 
 		// register for debugger events
 		var $Debugger = $(Debugger);
-		$Debugger.on("setBreakpoint", onSetBreakpoint);
-		$Debugger.on("removeBreakpoint", onRemoveBreakpoint);
-		$Debugger.on("paused", onPaused);
-		$Debugger.on("resumed", onResumed);
+		$Debugger.on('setBreakpoint', onSetBreakpoint);
+		$Debugger.on('removeBreakpoint', onRemoveBreakpoint);
+		$Debugger.on('paused', onPaused);
+		$Debugger.on('resumed', onResumed);
 
 		// register for code mirror click events
 		// Todo: use CodeMirror's onGutterClick
 		// Then we would know which editor was clicked (inline or full)
 		// Right now this would be buggy, though: https://github.com/adobe/brackets/issues/1251
-		$("body").on("click", ".CodeMirror-gutter pre", onLineNumberClick);
+		$('body').on('click', '.CodeMirror-gutter pre', onLineNumberClick);
 	}
 
 	// unload
@@ -177,7 +149,7 @@ define(function (require, exports, module) {
 		Breakpoint.unload();
 		Debugger.unload();
 		$style.remove();
-		$("body").off("click", ".CodeMirror-gutter pre", onLineNumberClick);
+		$('body').off('click', '.CodeMirror-gutter pre', onLineNumberClick);
 	}
 
 	exports.unload = unload;
