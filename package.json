@@ -4,7 +4,10 @@
     "description": "Debugger for Brackets",
     "homepage": "https://github.com/jdiehl/brackets-debugger",
     "version": "0.1.1",
-    "author": "Jonathan Diehl <diehl@cs.rwth-aachen.de>",
+    "author": {
+        "name": "Jonathan diehl",
+        "url": "https://github.com/jdiehl"
+    },
     "license": "MIT",
     "repository": {
         "type": "git",
