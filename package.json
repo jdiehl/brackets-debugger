@@ -1,10 +1,13 @@
 {
-  "name": "brackets-debugger"
-, "description": "Debugger for Brackets"
-, "version": "0.1.0"
-, "author": "Jonathan Diehl <diehl@cs.rwth-aachen.de>"
-, "repository": {
-    "type": "git"
-  , "url": "git@github.com:jdiehl/brackets-debugger.git"
-  }
+    "name": "brackets-debugger",
+    "description": "Debugger for Brackets",
+    "version": "0.1.0",
+    "author": {
+        "name": "Jonathan diehl",
+        "url": "https://github.com/jdiehl"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:jdiehl/brackets-debugger.git"
+    }
 }
