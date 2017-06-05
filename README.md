@@ -1,22 +1,6 @@
 # Brackets Debugger
 
-This extension adds debugging capabilities to Brackets.
-
-## Install
-
-Clone the debugger into the disabled extensions folder from Brackets:
-
-    git clone git://github.com/jdiehl/brackets-debugger.git brackets/src/extensions/disabled/debugger
-
-Create a link to enable the debugger:
-
-    ln -s brackets/src/extensions/disabled/debugger brackets/src/extensions/user/debugger
-
-## Usage
-
-Control the debugger from the console (will pop up once you have enabled live development).
-Set breakpoints by clicking on the gutter next to source code.
-The debugger will break on the breakpoints and you can investigate the call frame from the console.
+This extension is deprecated. Please use [Theseus](https://github.com/adobe-research/theseus) instead.
 
 ## License
 
